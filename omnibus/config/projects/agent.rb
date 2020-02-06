@@ -36,6 +36,11 @@ else
   install_dir '/opt/datadog-agent'
 end
 
+if linux?
+  glibc_version '2.12.2'
+  glibc_version 'x64'
+end
+
 # build_version is computed by an invoke command/function.
 # We can't call it directly from there, we pass it through the environment instead.
 build_version ENV['PACKAGE_VERSION']
