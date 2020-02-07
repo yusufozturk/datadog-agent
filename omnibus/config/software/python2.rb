@@ -40,6 +40,10 @@ if ohai["platform"] != "windows"
     "PKG_CONFIG_PATH" => "#{install_dir}/embedded/lib/pkgconfig"
   }
 
+  if linux?
+    env = with_glibc_version(env)
+  end
+
   python_configure = ["./configure",
                       "--prefix=#{install_dir}/embedded"]
 
