@@ -27,6 +27,8 @@ if osx?
 end
 
 if linux?
+  # build psutil with patch
+  dependency 'psutil'
   # add nfsiostat script
   dependency 'unixodbc'
   dependency 'freetds'  # needed for SQL Server integration
