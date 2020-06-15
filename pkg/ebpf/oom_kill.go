@@ -17,6 +17,7 @@ import (
 
 /*
 #include <string.h>
+#include "c/bpf-common.h"
 #include "c/oom-kill-kern-user.h"
 */
 import "C"
