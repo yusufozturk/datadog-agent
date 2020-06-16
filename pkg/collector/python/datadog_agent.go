@@ -189,7 +189,7 @@ func ReadPersistentCache(key *C.char) *C.char {
 }
 
 var (
-	obfuscator *obfuscate.Obfuscator
+	obfuscator       *obfuscate.Obfuscator
 	obfuscatorLoader sync.Once
 )
 

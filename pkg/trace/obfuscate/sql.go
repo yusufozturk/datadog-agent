@@ -359,7 +359,6 @@ func (o *Obfuscator) ObfuscateSQLStringSafe(sqlString string) string {
 func (o *Obfuscator) ObfuscateSQLExecPlan(jsonPlan string, normalize bool) (string, error) {
 	if normalize {
 		return o.sqlExecPlanNormalize.obfuscate([]byte(jsonPlan))
-	} else {
-		return o.sqlExecPlan.obfuscate([]byte(jsonPlan))
 	}
+	return o.sqlExecPlan.obfuscate([]byte(jsonPlan))
 }

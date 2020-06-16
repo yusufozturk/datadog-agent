@@ -103,7 +103,7 @@ func TestObfuscateJSON(t *testing.T) {
 		return func(t *testing.T) {
 			assert := assert.New(t)
 			cfg := &config.JSONObfuscationConfig{
-				KeepValues: s.KeepValues,
+				KeepValues:      s.KeepValues,
 				TransformValues: s.TransformValues,
 				TransformerType: s.TransformerType,
 			}
