@@ -48,8 +48,9 @@ RUN adduser --system --no-create-home --disabled-password --ingroup root dd-agen
     && mkdir -p /var/log/datadog/ /conf.d \
     && touch /var/log/datadog/.placeholder \
     && touch /tmp/.placeholder \
-    && chown -R dd-agent:root /etc/datadog-agent/ /var/log/datadog/ /conf.d /tmp/ \
-    && chmod g+r,g+w,g+X -R /etc/datadog-agent/ /var/log/datadog/ /conf.d /tmp/
+    && chown -R dd-agent:root /readsecret.sh /etc/datadog-agent/ /var/log/datadog/ /conf.d /tmp/ \
+    && chmod g+r,g+w,g+X -R /etc/datadog-agent/ /var/log/datadog/ /conf.d /tmp/ \
+    && chmod 500 /readsecret.sh
 
 # Incompatible with the custom metrics API on port 443
 # Set DD_EXTERNAL_METRICS_PROVIDER_PORT to a higher value to run as non-root
