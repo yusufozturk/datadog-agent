@@ -21,8 +21,10 @@ import (
 
 	"github.com/DataDog/datadog-agent/cmd/agent/api/response"
 	"github.com/DataDog/datadog-agent/cmd/agent/common"
+	"github.com/DataDog/datadog-agent/pkg/api/security"
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/config"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -249,7 +251,7 @@ func TestCleanDirectoryName(t *testing.T) {
 }
 
 func TestZipTaggerList(t *testing.T) {
-	if config.Datadog.ConfigFileUsed() != "" {
+	if _, err := os.Stat(security.GetAuthTokenFilepath()); err == nil && !os.IsNotExist(err) {
 		tagMap := make(map[string]response.TaggerListEntity)
 		tagMap["random_entity_name"] = response.TaggerListEntity{
 			Sources: []string{"docker_source_name"},
