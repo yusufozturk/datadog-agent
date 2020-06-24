@@ -87,6 +87,7 @@ func (s *Scanner) run() {
 
 // cleanup all tailers
 func (s *Scanner) cleanup() {
+
 	s.Lock()
 	defer s.Unlock()
 	stopper := restart.NewParallelStopper()
@@ -105,6 +106,8 @@ func (s *Scanner) cleanup() {
 // The Scanner needs to stop that previous tailer,
 // and start a new one for the new file.
 func (s *Scanner) scan() {
+	ts := time.Now().UnixNano()
+	log.Debugf("%d - Starting a scan, current activeSources: %v", ts, s.activeSources)
 	s.Lock()
 	defer s.Unlock()
 	files := s.fileProvider.FilesToTail(s.activeSources)
@@ -116,6 +119,7 @@ func (s *Scanner) scan() {
 		tailer, isTailed := s.tailers[tailerKey]
 		if isTailed && atomic.LoadInt32(&tailer.shouldStop) != 0 {
 			// skip this tailer as it must be stopped
+			log.Debugf("%d - this taile rmust be stopped: tailer: %v", ts, tailer)
 			continue
 		}
 		if !isTailed && tailersLen >= s.tailingLimit {
@@ -126,6 +130,7 @@ func (s *Scanner) scan() {
 		if !isTailed && tailersLen < s.tailingLimit {
 			// create a new tailer tailing from the beginning of the file if no offset has been recorded
 			succeeded := s.startNewTailer(file, config.Beginning)
+			log.Debugf("%d - starts a new tailer for file: %v", ts, file)
 			if !succeeded {
 				// the setup failed, let's try to tail this file in the next scan
 				continue
@@ -142,6 +147,7 @@ func (s *Scanner) scan() {
 		if didRotate {
 			// restart tailer because of file-rotation on file
 			succeeded := s.restartTailerAfterFileRotation(tailer, file)
+			log.Debugf("%d - restart tailer for file: %v", ts, file)
 			if !succeeded {
 				// the setup failed, let's try to tail this file in the next scan
 				continue
@@ -155,6 +161,7 @@ func (s *Scanner) scan() {
 		// stop all tailers which have not been selected
 		_, shouldTail := filesTailed[buildTailerKey(tailer)]
 		if !shouldTail {
+			log.Debugf("%d - stopping tailer: %v", ts, tailer)
 			s.stopTailer(tailer)
 		}
 	}
