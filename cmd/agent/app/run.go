@@ -170,15 +170,17 @@ func StartAgent() error {
 		)
 
 		//Setup JMX logger
-		err = config.SetupLogger(
-			jmxLoggerName,
-			config.Datadog.GetString("log_level"),
-			jmxLogFile,
-			syslogURI,
-			config.Datadog.GetBool("syslog_rfc"),
-			config.Datadog.GetBool("log_to_console"),
-			config.Datadog.GetBool("log_format_json"),
-		)
+		if err == nil {
+			err = config.SetupJMXLogger(
+				jmxLoggerName,
+				config.Datadog.GetString("log_level"),
+				jmxLogFile,
+				syslogURI,
+				config.Datadog.GetBool("syslog_rfc"),
+				config.Datadog.GetBool("log_to_console"),
+				config.Datadog.GetBool("log_format_json"),
+			)
+		}
 
 	} else {
 		err = config.SetupLogger(
@@ -192,15 +194,17 @@ func StartAgent() error {
 		)
 
 		//Setup JMX logger
-		err = config.SetupLogger(
-			jmxLoggerName,
-			config.Datadog.GetString("log_level"),
-			"", // no log file on android
-			"", // no syslog on android,
-			false,
-			true,  // always log to console
-			false, // not in json
-		)
+		if err == nil {
+			err = config.SetupJMXLogger(
+				jmxLoggerName,
+				config.Datadog.GetString("log_level"),
+				"", // no log file on android
+				"", // no syslog on android,
+				false,
+				true,  // always log to console
+				false, // not in json
+			)
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("Error while setting up logging, exiting: %v", err)

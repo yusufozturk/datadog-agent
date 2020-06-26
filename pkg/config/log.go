@@ -118,23 +118,54 @@ func SetupLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, sys
 			}
 		}
 		seelogConfig.ConfigureSyslog(syslogURI, useTLS)
-		jmxSeelogConfig.ConfigureSyslog(syslogURI, useTLS)
 	}
 
-	if loggerName == "JMX" {
-		jmxSeelogConfig = seelogCfg.NewSeelogConfig("JMX", seelogLogLevel, formatID, buildJSONFormat("JMX"), buildCommonFormat("JMX"), syslogRFC)
-		jmxSeelogConfig.EnableConsoleLog(logToConsole)
-		jmxSeelogConfig.EnableFileLogging(logFile, Datadog.GetSizeInBytes("log_file_max_size"), uint(Datadog.GetInt("log_file_max_rolls")))
-		jmxLoggerInterface, err := GenerateLoggerInterface(jmxSeelogConfig)
-		log.SetupJmxLogger(jmxLoggerInterface, seelogLogLevel)
-		log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
-		//seelog.ReplaceLogger(jmxLoggerInterface)
-		return err
-	}
 	loggerInterface, err := GenerateLoggerInterface(seelogConfig)
 	log.SetupLogger(loggerInterface, seelogLogLevel)
 	log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
 	return err
+}
+
+// SetupJMXLogger sets up a logger with JMX logger name and log level
+// if a non empty logFile is provided, it will also log to the file
+// a non empty syslogURI will enable syslog, and format them following RFC 5424 if specified
+// you can also specify to log to the console and in JSON format
+func SetupJMXLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, syslogRFC, logToConsole, jsonFormat bool) error {
+	seelogLogLevel, err := validateLogLevel(logLevel)
+	if err != nil {
+		return err
+	}
+
+	formatID := "common"
+	if jsonFormat {
+		formatID = "json"
+	}
+
+	jmxSeelogConfig = seelogCfg.NewSeelogConfig(string(loggerName), seelogLogLevel, formatID, buildJSONFormat(loggerName), buildCommonFormat(loggerName), syslogRFC)
+	jmxSeelogConfig.EnableConsoleLog(logToConsole)
+	jmxSeelogConfig.EnableFileLogging(logFile, Datadog.GetSizeInBytes("log_file_max_size"), uint(Datadog.GetInt("log_file_max_rolls")))
+
+	if syslogURI != "" { // non-blank uri enables syslog
+		syslogTLSKeyPair, err := getSyslogTLSKeyPair()
+		if err != nil {
+			return err
+		}
+		var useTLS bool
+		if syslogTLSKeyPair != nil {
+			useTLS = true
+			syslogTLSConfig = &tls.Config{
+				Certificates:       []tls.Certificate{*syslogTLSKeyPair},
+				InsecureSkipVerify: Datadog.GetBool("syslog_tls_verify"),
+			}
+		}
+		jmxSeelogConfig.ConfigureSyslog(syslogURI, useTLS)
+	}
+
+	jmxLoggerInterface, err := GenerateLoggerInterface(jmxSeelogConfig)
+	log.SetupJmxLogger(jmxLoggerInterface, seelogLogLevel)
+	log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
+	return err
+
 }
 
 //GenerateLoggerInterface return a logger Interface from a log config
