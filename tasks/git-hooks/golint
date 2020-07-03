@@ -1,4 +1,2 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 inv -e lint --hook --targets="$*"

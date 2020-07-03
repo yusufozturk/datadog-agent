@@ -4,6 +4,7 @@ Golang related tasks go here
 from __future__ import print_function
 import datetime
 import os
+import os.path
 import shutil
 import sys
 import csv
@@ -133,7 +134,10 @@ def vet(ctx, targets, rtloader_root=None, build_tags=None, arch="x64", hook=Fals
 
     if isinstance(targets, basestring):
         if hook:
-            args = targets.split(' ')
+            files = targets.split(' ')
+            args = [
+                "./{}".format(os.path.dirname(path)) for path in files if os.path.basename(path) not in MODULE_WHITELIST
+            ]
         else:
             # when this function is called from the command line, targets are passed
             # as comma separated tokens in a string

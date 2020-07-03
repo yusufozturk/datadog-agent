@@ -25,3 +25,15 @@ repos:
       entry: 'tasks/git-hooks/golint'
       language: system
       files: \.go$
+    - id: govet
+      name: govet
+      description: go vet
+      entry: 'tasks/git-hooks/govet'
+      language: system
+      files: \.go$
+    - id: gofmt
+      name: gofmt
+      description: go fmt
+      entry: 'tasks/git-hooks/gofmt'
+      language: system
+      files: \.go$
