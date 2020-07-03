@@ -24,7 +24,9 @@ build do
 
   # Only `libtdsodbc.so/libtdsodbc.so.0.0.0` are needed for SQLServer integration.
   # Hence we only need to copy those.
+  command "ls -la src/odbc/.libs"
   copy "src/odbc/.libs/libtdsodbc.so", "#{install_dir}/embedded/lib/libtdsodbc.so"
   copy "src/odbc/.libs/libtdsodbc.so.0.0.0", "#{install_dir}/embedded/lib/libtdsodbc.so.0.0.0"
+  command "ls -la #{install_dir}/embedded/lib | grep libtdsodbc"
 
 end
