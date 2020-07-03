@@ -17,3 +17,11 @@ repos:
   hooks:
     - id: shellcheck
       args: ["--severity=info", "-e", "SC2059", "-e", "SC2028"]
+- repo: local
+  hooks:
+    - id: golint
+      name: golint
+      description: golint
+      entry: 'tasks/git-hooks/golint'
+      language: system
+      files: \.go$

@@ -56,17 +56,18 @@ GO_GENERATE_TARGETS = ["./pkg/status", "./cmd/agent/gui"]
 
 
 @task
-def fmt(ctx, targets, fail_on_fmt=False):
+def fmt(ctx, targets, fail_on_fmt=False, hook=False):
     """
     Run go fmt on targets.
 
     Example invokation:
         inv fmt --targets=./pkg/collector/check,./pkg/aggregator
     """
+
     if isinstance(targets, basestring):
         # when this function is called from the command line, targets are passed
         # as comma separated tokens in a string
-        targets = targets.split(',')
+        targets = targets.split(' ' if hook else ',')
 
     result = ctx.run("gofmt -l -w -s " + " ".join(targets))
     if result.stdout:
@@ -79,7 +80,7 @@ def fmt(ctx, targets, fail_on_fmt=False):
 
 
 @task
-def lint(ctx, targets):
+def lint(ctx, targets, hook=False):
     """
     Run golint on targets. If targets are not specified,
     the value from `invoke.yaml` will be used.
@@ -87,13 +88,18 @@ def lint(ctx, targets):
     Example invokation:
         inv lint --targets=./pkg/collector/check,./pkg/aggregator
     """
-    if isinstance(targets, basestring):
-        # when this function is called from the command line, targets are passed
-        # as comma separated tokens in a string
-        targets = targets.split(',')
 
-    # add the /... suffix to the targets
-    targets_list = ["{}/...".format(t) for t in targets]
+    if isinstance(targets, basestring):
+        if hook:
+            targets_list = targets.split(' ')
+        else:
+            # when this function is called from the command line, targets are passed
+            # as comma separated tokens in a string
+            targets = targets.split(',')
+
+            # add the /... suffix to the targets
+            targets_list = ["{}/...".format(t) for t in targets]
+
     result = ctx.run("golint {}".format(' '.join(targets_list)))
     if result.stdout:
         files = []
@@ -117,20 +123,25 @@ def lint(ctx, targets):
 
 
 @task
-def vet(ctx, targets, rtloader_root=None, build_tags=None, arch="x64"):
+def vet(ctx, targets, rtloader_root=None, build_tags=None, arch="x64", hook=False):
     """
     Run go vet on targets.
 
     Example invokation:
         inv vet --targets=./pkg/collector/check,./pkg/aggregator
     """
-    if isinstance(targets, basestring):
-        # when this function is called from the command line, targets are passed
-        # as comma separated tokens in a string
-        targets = targets.split(',')
 
-    # add the /... suffix to the targets
-    args = ["{}/...".format(t) for t in targets]
+    if isinstance(targets, basestring):
+        if hook:
+            args = targets.split(' ')
+        else:
+            # when this function is called from the command line, targets are passed
+            # as comma separated tokens in a string
+            targets = targets.split(',')
+
+            # add the /... suffix to the targets
+            args = ["{}/...".format(t) for t in targets]
+
     tags = build_tags or get_default_build_tags(arch=arch)
     tags.append("dovet")
 
