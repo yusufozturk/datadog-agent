@@ -50,6 +50,8 @@ build do
             delete "#{install_dir}/bin/agent/dist/*.yaml"
             command "del /q /s #{windows_safe_path(install_dir)}\\*.pyc"
         elsif linux?
+            command "ls -la #{install_dir}/embedded/lib | grep libtdsodbc"
+
             # Fix pip after building on extended toolchain in CentOS builder
             if redhat?
               unless arm?
@@ -178,6 +180,8 @@ build do
             # skipped.
             strip_exclude("*psycopg2*")
             strip_exclude("*cffi_backend*")
+
+            command "ls -la #{install_dir}/embedded/lib | grep libtdsodbc"
 
         elsif osx?
             # Remove linux specific configs
