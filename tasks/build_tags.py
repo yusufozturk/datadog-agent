@@ -33,6 +33,7 @@ ALL_TAGS = set(
 
 # IOT_AGENT_TAGS lists the tags needed when building the IOT Agent
 IOT_AGENT_TAGS = [
+    "process",
     "zlib",
     "systemd",
 ]

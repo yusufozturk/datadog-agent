@@ -35,10 +35,8 @@ BIN_PATH = os.path.join(".", "bin", "agent")
 AGENT_TAG = "datadog/agent:master"
 DEFAULT_BUILD_TAGS = [
     "apm",
-    "process",
     "consul",
     "containerd",
-    "python",
     "cri",
     "docker",
     "ec2",
@@ -49,11 +47,12 @@ DEFAULT_BUILD_TAGS = [
     "kubelet",
     "log",
     "netcgo",
+    "secrets",
     "systemd",
     "process",
+    "python",
     "zk",
     "zlib",
-    "secrets",
 ]
 
 AGENT_CORECHECKS = [

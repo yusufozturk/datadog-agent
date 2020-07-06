@@ -38,7 +38,6 @@ build do
     mkdir "#{install_dir}/bin"
     mkdir "#{install_dir}/run/"
 
-
     # Config
     mkdir '/etc/datadog-agent'
     mkdir "/etc/init"
@@ -54,11 +53,19 @@ build do
           dest: "/etc/init/datadog-agent.conf",
           mode: 0644,
           vars: { install_dir: install_dir, etc_dir: etc_dir }
+      erb source: "upstart_debian.process.conf.erb",
+          dest: "/etc/init/datadog-agent-process.conf",
+          mode: 0644,
+          vars: { install_dir: install_dir, etc_dir: etc_dir }
     elsif redhat? || suse?
       # Ship a different upstart job definition on RHEL to accommodate the old
       # version of upstart (0.6.5) that RHEL 6 provides.
       erb source: "upstart_redhat.conf.erb",
           dest: "/etc/init/datadog-agent.conf",
+          mode: 0644,
+          vars: { install_dir: install_dir, etc_dir: etc_dir }
+      erb source: "upstart_redhat.process.conf.erb",
+          dest: "/etc/init/datadog-agent-process.conf",
           mode: 0644,
           vars: { install_dir: install_dir, etc_dir: etc_dir }
     end
@@ -69,10 +76,18 @@ build do
           dest: "/lib/systemd/system/datadog-agent.service",
           mode: 0644,
           vars: { install_dir: install_dir, etc_dir: etc_dir }
+      erb source: "systemd.process.service.erb",
+          dest: "/lib/systemd/system/datadog-agent-process.service",
+          mode: 0644,
+          vars: { install_dir: install_dir, etc_dir: etc_dir }
     else
       mkdir "/usr/lib/systemd/system/"
       erb source: "systemd.service.erb",
           dest: "/usr/lib/systemd/system/datadog-agent.service",
+          mode: 0644,
+          vars: { install_dir: install_dir, etc_dir: etc_dir }
+      erb source: "systemd.process.service.erb",
+          dest: "/usr/lib/systemd/system/datadog-agent-process.service",
           mode: 0644,
           vars: { install_dir: install_dir, etc_dir: etc_dir }
     end
@@ -87,7 +102,7 @@ build do
 
     command "inv agent.build --iot --rebuild --no-development --arch #{platform} --python-runtimes #{py_runtimes_arg} --major-version #{major_version_arg}", env: env
 
-      # move around bin and config files
+    # move around bin and config files
     move 'bin/agent/dist/datadog.yaml', "#{conf_dir}/datadog.yaml.example"
     #move 'bin/agent/dist/system-probe.yaml', "#{conf_dir}/system-probe.yaml.example"
     move 'bin/agent/dist/conf.d', "#{conf_dir}/"
@@ -99,9 +114,11 @@ build do
     command "invoke -e process-agent.build --major-version #{major_version_arg} --arch #{platform}", :env => env
 
     copy 'bin/process-agent/process-agent.exe', "#{Omnibus::Config.source_dir()}/datadog-iot-agent/src/github.com/DataDog/datadog-agent/bin/agent"
-
-
+  else
+    command "invoke -e process-agent.build --python-runtimes #{py_runtimes_arg} --major-version #{major_version_arg}", :env => env
+    copy 'bin/process-agent/process-agent', "#{install_dir}/embedded/bin"
   end
+
   block do
     if windows?
       # defer compilation step in a block to allow getting the project's build version, which is populated
