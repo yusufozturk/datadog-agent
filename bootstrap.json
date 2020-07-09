@@ -12,7 +12,8 @@
             "github.com/golangci/golangci-lint",
             "github.com/frapposelli/wwhrd",
             "github.com/goware/modvendor",
-            "github.com/shuLhan/go-bindata/cmd/go-bindata"
+            "github.com/shuLhan/go-bindata/cmd/go-bindata",
+            "honnef.co/go/tools/cmd/staticcheck"
         ],
         "golang.org/x/tools/go/ast/astutil": {
             "version": "release-branch.go1.10",
@@ -54,6 +55,10 @@
         },
         "github.com/shuLhan/go-bindata/cmd/go-bindata" : {
             "version": "v3.4.0",
+            "type": "go"
+        },
+        "honnef.co/go/tools/cmd/staticcheck" : {
+            "version": "2020.1.4",
             "type": "go"
         },
         "github.com/frapposelli/wwhrd": {
