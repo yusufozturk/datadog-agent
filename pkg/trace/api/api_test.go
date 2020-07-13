@@ -501,51 +501,42 @@ func TestReceiverRateLimiterCancel(t *testing.T) {
 	wg.Wait()
 }
 
-func BenchmarkHandleTracesFromOneApp(b *testing.B) {
-	// prepare the payload
-	// msgpack payload
-	var buf bytes.Buffer
-	msgp.Encode(&buf, testutil.GetTestTraces(1, 1, true))
+func BenchmarkDecodeRequest(b *testing.B) {
+	assert := assert.New(b)
+	f, err := ioutil.TempFile("", "decodeRequest-*") //(f *os.File, err error)
+	assert.NoError(err)
 
-	// prepare the receiver
-	conf := newTestReceiverConfig()
-	receiver := newTestReceiverFromConfig(conf)
+	err = msgp.Encode(f, testutil.GetTestTraces(1000, 100, true))
+	assert.NoError(err)
 
-	// response recorder
-	handler := http.HandlerFunc(receiver.handleWithVersion(v04, receiver.handleTraces))
+	flen, err := f.Seek(0, os.SEEK_END)
+	assert.NoError(err)
 
 	// benchmark
 	b.ResetTimer()
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
-		// consume the traces channel without doing anything
-		select {
-		case <-receiver.out:
-		default:
-		}
+		var traces pb.Traces
+		_, err = f.Seek(0, os.SEEK_SET)
+		assert.NoError(err)
 
-		// forge the request
-		rr := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/v0.4/traces", bytes.NewReader(buf.Bytes()))
+		req, err := http.NewRequest("POST", "http://localhost/", f)
 		req.Header.Set("Content-Type", "application/msgpack")
+		req.ContentLength = flen
+		assert.NoError(err)
 
-		// Add meta data to simulate data coming from multiple applications
-		for _, v := range headerFields {
-			req.Header.Set(v, langs[n%len(langs)])
-		}
-
-		// trace only this execution
 		b.StartTimer()
-		handler.ServeHTTP(rr, req)
+		err = decodeRequest(req, &traces)
+		assert.NoError(err)
 	}
 }
 
-func BenchmarkHandleTracesFromMultipleApps(b *testing.B) {
+func BenchmarkHandleTraces(b *testing.B) {
 	// prepare the payload
 	// msgpack payload
 	var buf bytes.Buffer
-	msgp.Encode(&buf, testutil.GetTestTraces(1, 1, true))
+	msgp.Encode(&buf, testutil.GetTestTraces(1000, 100, true))
 
 	// prepare the receiver
 	conf := newTestReceiverConfig()
@@ -567,8 +558,9 @@ func BenchmarkHandleTracesFromMultipleApps(b *testing.B) {
 
 		// forge the request
 		rr := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/v0.4/traces", bytes.NewReader(buf.Bytes()))
+		req, err := http.NewRequest("POST", "/v0.4/traces", bytes.NewReader(buf.Bytes()))
 		req.Header.Set("Content-Type", "application/msgpack")
+		assert.NoError(b, err)
 
 		// Add meta data to simulate data coming from multiple applications
 		for _, v := range headerFields {

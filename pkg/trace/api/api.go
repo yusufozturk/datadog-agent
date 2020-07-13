@@ -6,6 +6,7 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"expvar"
@@ -559,19 +560,39 @@ func (r *HTTPReceiver) Languages() string {
 	return strings.Join(str, "|")
 }
 
+// defaultReadBufferSize specifies the default size of the network read buffer when
+// Content-Length is not set. At the time of writing, most tracers trigger flushes
+// by size at around 5MB (which is half of the 10MB threshold). By default, at most
+// 2 reads should occur with this setting.
+const defaultReadBufferSize = 5 * 1024 * 1024
+
+var readBufferPool sync.Pool
+
+func newBufioReader(r io.Reader) *bufio.Reader {
+	if v := readBufferPool.Get(); v != nil {
+		br := v.(*bufio.Reader)
+		br.Reset(r)
+		return br
+	}
+	return bufio.NewReaderSize(r, defaultReadBufferSize)
+}
+
 func decodeRequest(req *http.Request, dest msgp.Decodable) error {
+	buf := newBufioReader(req.Body)
+	defer readBufferPool.Put(buf)
+
 	switch mediaType := getMediaType(req); mediaType {
 	case "application/msgpack":
-		return msgp.Decode(req.Body, dest)
+		return msgp.Decode(buf, dest)
 	case "application/json":
 		fallthrough
 	case "text/json":
 		fallthrough
 	case "":
-		return json.NewDecoder(req.Body).Decode(dest)
+		return json.NewDecoder(buf).Decode(dest)
 	default:
 		// do our best
-		if err1 := json.NewDecoder(req.Body).Decode(dest); err1 != nil {
+		if err1 := json.NewDecoder(buf).Decode(dest); err1 != nil {
 			if err2 := msgp.Decode(req.Body, dest); err2 != nil {
 				return fmt.Errorf("could not decode JSON (%q), nor Msgpack (%q)", err1, err2)
 			}
