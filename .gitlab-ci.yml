@@ -1,4 +1,6 @@
-include: 'https://gitlab-templates.ddbuild.io/slack-notifier/v1/template.yml'
+include:
+  - 'https://gitlab-templates.ddbuild.io/slack-notifier/v1/template.yml'
+  - 'https://raw.githubusercontent.com/DataDog/datadog-agent/kserrania/fake-master/.gitlab/template.yml'
 
 default:
   retry:
@@ -1682,71 +1684,67 @@ deploy_windows_testing-a7:
   before_script: # Note: if you are changing this, remember to also change .kitchen_test_windows_installer, which has a copy of this with less TEST_PLATFORMS defined.
     - if [ $AGENT_MAJOR_VERSION == "7" ]; then export WINDOWS_TESTING_S3_BUCKET=$WINDOWS_TESTING_S3_BUCKET_A7; else export WINDOWS_TESTING_S3_BUCKET=$WINDOWS_TESTING_S3_BUCKET_A6; fi
     - rsync -azr --delete ./ $SRC_PATH
-    - export TEST_PLATFORMS="win2008r2,id,/subscriptions/8c56d827-5f07-45ce-8f2b-6c5001db5c6f/resourceGroups/kitchen-test-images/providers/Microsoft.Compute/galleries/kitchenimages/images/Windows2008-R2-SP1/versions/1.0.0"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|win2012,urn,MicrosoftWindowsServer:WindowsServer:2012-Datacenter:3.127.20190410"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|win2012r2,urn,MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:4.127.20190416"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|win2016,urn,MicrosoftWindowsServer:WindowsServer:2016-Datacenter-Server-Core:2016.127.20190416"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|win2019,urn,MicrosoftWindowsServer:WindowsServer:2019-Datacenter-Core:2019.0.20190410"
+    - export PLATFORMS="$kitchen_win2008r2 $kitchen_win2012 $kitchen_win2012r2 $kitchen_win2016 $kitchen_win2019"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
 .kitchen_os_centos: &kitchen_os_centos
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
-    - export TEST_PLATFORMS="centos-69,urn,OpenLogic:CentOS:6.9:6.9.20180530"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|centos-77,urn,OpenLogic:CentOS:7.7:7.7.201912090"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|rhel-81,urn,RedHat:RHEL:8.1:8.1.2020020415"
+    - export PLATFORMS="$kitchen_centos69 $kitchen_centos77 $kitchen_rhel81"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
 .kitchen_os_suse: &kitchen_os_suse
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
-    - export TEST_PLATFORMS="sles-12,urn,SUSE:SLES-BYOS:12-SP4:2019.11.13"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-15,urn,SUSE:SLES-BYOS:15:2019.11.15"
+    - export PLATFORMS="$kitchen_sles12 $kitchen_sles15"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
 .kitchen_os_debian: &kitchen_os_debian
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
-    - export TEST_PLATFORMS="debian-8,urn,credativ:Debian:8:8.20190313.0"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|debian-9,urn,credativ:Debian:9:9.20190515.0"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|debian-10,urn,Debian:debian-10:10:0.20190709.401"
+    - export PLATFORMS="$kitchen_debian8 $kitchen_debian9 $kitchen_debian10"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
 .kitchen_os_ubuntu: &kitchen_os_ubuntu
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
-    - export TEST_PLATFORMS="ubuntu-14-04,urn,Canonical:UbuntuServer:14.04.5-LTS:14.04.201905140"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|ubuntu-16-04,urn,Canonical:UbuntuServer:16.04.0-LTS:16.04.201906170"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|ubuntu-18-04,urn,Canonical:UbuntuServer:18.04-LTS:18.04.201906040"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|ubuntu-20-04,urn,Canonical:0001-com-ubuntu-server-focal:20_04-lts:20.04.202004230"
+    - export PLATFORMS="$kitchen_ubuntu1404 $kitchen_ubuntu1604 $kitchen_ubuntu1804 $kitchen_ubuntu2004"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
 # Kitchen: tests
 # --------------
 
+# Trim start / end spaces & replace spaces by | to separate platform list
+.kitchen_load_platforms: &kitchen_load_platforms export TEST_PLATFORMS=$(echo $PLATFORMS | awk '{$1=$1};1' | tr -s " " "|")
+
 .kitchen_test_chef:
   script:
+    - *kitchen_load_platforms
     - bash -l tasks/run-test-kitchen.sh chef-test $AGENT_MAJOR_VERSION
 
 .kitchen_test_step_by_step:
   script:
+    - *kitchen_load_platforms
     - bash -l tasks/run-test-kitchen.sh step-by-step-test $AGENT_MAJOR_VERSION
 
 .kitchen_test_install_script:
   script:
+    - *kitchen_load_platforms
     - bash -l tasks/run-test-kitchen.sh install-script-test $AGENT_MAJOR_VERSION
 
 .kitchen_test_upgrade5:
   script:
+    - *kitchen_load_platforms
     - bash -l tasks/run-test-kitchen.sh upgrade5-test $AGENT_MAJOR_VERSION
 
 .kitchen_test_upgrade6:
   script:
+    - *kitchen_load_platforms
     - bash -l tasks/run-test-kitchen.sh upgrade6-test $AGENT_MAJOR_VERSION
 
 .kitchen_test_upgrade7:
@@ -1757,10 +1755,11 @@ deploy_windows_testing-a7:
   before_script: # Override kitchen_os_windows default with a smaller set of TEST_PLATFORMS
     - if [ $AGENT_MAJOR_VERSION == "7" ]; then export WINDOWS_TESTING_S3_BUCKET=$WINDOWS_TESTING_S3_BUCKET_A7; else export WINDOWS_TESTING_S3_BUCKET=$WINDOWS_TESTING_S3_BUCKET_A6; fi
     - rsync -azr --delete ./ $SRC_PATH
-    - export TEST_PLATFORMS="win2012,urn,MicrosoftWindowsServer:WindowsServer:2012-Datacenter:3.127.20190410"
+    - export PLATFORMS="$kitchen_win2012"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
   script:
+    - *kitchen_load_platforms
     - bash -l tasks/run-test-kitchen.sh windows-install-test $AGENT_MAJOR_VERSION
 
 # Kitchen: Agent flavor
