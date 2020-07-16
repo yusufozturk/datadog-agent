@@ -20,6 +20,7 @@ type Check interface {
 var All = []Check{
 	Process,
 	RTProcess,
+	Elasticsearch,
 	Container,
 	RTContainer,
 	Connections,

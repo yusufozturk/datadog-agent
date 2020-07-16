@@ -97,6 +97,9 @@ type AgentConfig struct {
 	CollectDNSStats bool
 	DNSTimeout      time.Duration
 
+	// Elastic collection configuration
+	ElasticEnabled bool
+
 	// Orchestrator collection configuration
 	OrchestrationCollectionEnabled bool
 	KubeClusterName                string
@@ -353,6 +356,11 @@ func NewAgentConfig(loggerName config.LoggerName, yamlPath, netYamlPath string) 
 	// activate the pod collection if enabled and we have the cluster name set
 	if cfg.OrchestrationCollectionEnabled && cfg.KubeClusterName != "" {
 		cfg.EnabledChecks = append(cfg.EnabledChecks, "pod")
+	}
+
+	// activate the elastic collection if enabled
+	if cfg.ElasticEnabled {
+		cfg.EnabledChecks = append(cfg.EnabledChecks, "elastic")
 	}
 
 	return cfg, nil

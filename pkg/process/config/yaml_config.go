@@ -376,6 +376,11 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 		}
 	}
 
+	// Elasticsearch check
+	if config.Datadog.GetBool("elastic_check") {
+		a.ElasticEnabled = true
+	}
+
 	return nil
 }
 
