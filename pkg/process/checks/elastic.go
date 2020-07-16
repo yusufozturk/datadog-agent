@@ -1,7 +1,9 @@
 package checks
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"sync"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	elasticsearch6 "github.com/elastic/go-elasticsearch/v6"
+	"github.com/tidwall/gjson"
 )
 
 
@@ -24,6 +27,7 @@ type ElasticCheck struct {
 	lastRun time.Time
 
 	clusterName string
+	isLeaderNode bool
 
 	es *elasticsearch6.Client
 }
@@ -32,22 +36,45 @@ type ElasticCheck struct {
 func (e *ElasticCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
 	e.sysInfo = info
 
+	log.Infof("elasticsearch client version: %s", elasticsearch6.Version)
+
 	// TODO: Does this work with ES5 if we're only accessing _cat endpoints?
 	client, err := elasticsearch6.NewDefaultClient() // Accesses localhost:9200
 	if err != nil {
 		_ = log.Errorf("failed to create elasticsearch client: %s", err)
 		return
 	}
+	e.es = client
 
-	log.Infof("elasticsearch client version: %s", elasticsearch6.Version)
-	esInfo, err := client.Info()
+	if e.clusterName, err = e.getClusterName(); err == nil {
+		log.Infof("elasticsearch cluster: %s", e.clusterName)
+	}
+}
+
+// Not my fault: https://github.com/elastic/go-elasticsearch/blob/master/_examples/encoding/gjson.go
+func readJsonBlob(r io.Reader) []byte {
+	var b bytes.Buffer
+	_, _ = b.ReadFrom(r) // TODO: Ayy
+	return b.Bytes()
+}
+
+func (e *ElasticCheck) getClusterName() (string, error) {
+	esInfo, err := e.es.Info()
 	if err != nil {
-		_ = log.Errorf("failed to get elasticsearch info: %s", err)
-		return
+		return "", log.Errorf("failed to get elasticsearch info: %s", err)
 	}
 
+	defer esInfo.Body.Close()
 
 	log.Infof("ES Info: %+v", esInfo)
+
+	jsonBlob := readJsonBlob(esInfo.Body)
+	cluster := gjson.GetBytes(jsonBlob, "cluster_name").String();
+	if cluster == "" {
+		return "", log.Errorf("unable to find elasticsearch cluster name")
+	}
+
+	return cluster, nil
 }
 
 // Name returns the name of the ElasticCheck.

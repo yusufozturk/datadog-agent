@@ -134,6 +134,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect
+	github.com/tidwall/gjson v1.6.0
 	github.com/tinylib/msgp v1.1.2
 	github.com/twmb/murmur3 v1.1.3
 	github.com/ulikunitz/xz v0.5.7 // indirect
