@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	elasticsearch6 "github.com/elastic/go-elasticsearch/v6"
+	"github.com/elastic/go-elasticsearch/v6/esapi"
 	"github.com/tidwall/gjson"
 )
 
@@ -51,7 +52,11 @@ func (e *ElasticCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
 	e.es = client
 
 	e.getClusterInfo()
+
 	e.isLeaderNode = e.isLeader()
+	if e.isLeaderNode {
+		log.Infof("this node (%s) is considered the ES leader, tracking shards...", e.nodeName)
+	}
 }
 
 // Not my fault: https://github.com/elastic/go-elasticsearch/blob/master/_examples/encoding/gjson.go
@@ -76,29 +81,46 @@ func (e *ElasticCheck) getClusterInfo()  {
 	e.clusterName = gjson.GetBytes(jsonBlob, "cluster_name").String();
 	if e.clusterName == "" {
 		e.clusterName = "unknown"
-		log.Errorf("unable to find elasticsearch cluster name")
+		log.Warnf("unable to find elasticsearch cluster name")
 	}
 
 	// Cluster UUID
 	e.clusterUUID = gjson.GetBytes(jsonBlob, "cluster_uuid").String();
 	if e.clusterUUID == "" {
 		e.clusterUUID = "unknown"
-		log.Errorf("unable to find elasticsearch cluster UUID")
+		log.Warnf("unable to find elasticsearch cluster UUID")
 	}
 
 	// Node name
 	e.nodeName = gjson.GetBytes(jsonBlob, "name").String();
 	if e.nodeName == "" {
 		e.nodeName = "unknown"
-		log.Errorf("unable to find elasticsearch node name")
+		log.Warnf("unable to find elasticsearch node name")
 	}
 
 	log.Infof("elasticsearch cluster: %s (%s), node: %s", e.clusterName, e.clusterUUID, e.nodeName)
 }
 
+// Note: this doesn't really deal with split brains and multiple nodes thinking they're leaders... \o/
 func (e *ElasticCheck) isLeader() bool {
-	// TODO
-	return false
+	leaderInfo, err := e.es.Cat.Master(func(request *esapi.CatMasterRequest) {
+		request.Format = "json"
+	})
+
+	if err != nil {
+		log.Warnf("failed to get elasticsearch leader info: %s", err)
+		return false
+	}
+	defer leaderInfo.Body.Close()
+
+	jsonBlob := readJsonBlob(leaderInfo.Body)
+	leaderNode := gjson.GetBytes(jsonBlob, "node").String();
+	if leaderNode == "" {
+		log.Warnf("unable to find elasticsearch leader, defaulting to false")
+		return false
+	}
+
+	return leaderNode == e.nodeName
 }
 
 // Name returns the name of the ElasticCheck.
