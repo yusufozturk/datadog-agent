@@ -49,14 +49,12 @@ func (e *ElasticCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
 		_ = log.Errorf("failed to create elasticsearch client: %s", err)
 		return
 	}
+
 	e.es = client
-
 	e.getClusterInfo()
-
 	e.isLeaderNode = e.isLeader()
-	if e.isLeaderNode {
-		log.Infof("this node (%s) is considered the ES leader, tracking shards...", e.nodeName)
-	}
+
+	log.Infof("elasticsearch node: %s (leader: %t), elastic-check initialized", e.nodeName, e.isLeaderNode)
 }
 
 // Not my fault: https://github.com/elastic/go-elasticsearch/blob/master/_examples/encoding/gjson.go
@@ -75,7 +73,6 @@ func (e *ElasticCheck) getClusterInfo()  {
 
 	defer esInfo.Body.Close()
 	jsonBlob := readJsonBlob(esInfo.Body)
-	log.Infof("ES Info: %+v", esInfo)
 
 	// Example output:
 	//{
@@ -113,7 +110,7 @@ func (e *ElasticCheck) getClusterInfo()  {
 		log.Warnf("unable to find elasticsearch node name")
 	}
 
-	log.Infof("elasticsearch cluster: %s (%s), node: %s", e.clusterName, e.clusterUUID, e.nodeName)
+	log.Infof("elasticsearch cluster: %s (%s)", e.clusterName, e.clusterUUID)
 }
 
 // Note: this doesn't really deal with split brains and multiple nodes thinking they're leaders... \o/
@@ -130,6 +127,7 @@ func (e *ElasticCheck) isLeader() bool {
 
 	// Example output:
 	//	[{"id":"8iGt13GbTR63qMBN4F4imQ","host":"172.21.119.104","ip":"172.21.119.104","node":"i-ABDE"}]
+
 	jsonBlob := readJsonBlob(leaderInfo.Body)
 	leaderNode := gjson.GetBytes(jsonBlob, "0.node").String();
 	if leaderNode == "" {
