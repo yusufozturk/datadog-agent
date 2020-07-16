@@ -16,7 +16,6 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-
 // Elasticsearch is a singleton ElasticCheck.
 var Elasticsearch = &ElasticCheck{}
 
@@ -27,11 +26,11 @@ type ElasticCheck struct {
 	sysInfo *model.SystemInfo
 	lastRun time.Time
 
-	nodeName string
+	nodeName    string
 	clusterName string
 	clusterUUID string
 
-	isLeaderNode bool
+	isLeaderNode    bool
 	lastLeaderCheck time.Time
 
 	es *elasticsearch6.Client
@@ -65,7 +64,7 @@ func readJsonBlob(r io.Reader) []byte {
 	return b.Bytes()
 }
 
-func (e *ElasticCheck) getClusterInfo()  {
+func (e *ElasticCheck) getClusterInfo() {
 	esInfo, err := e.es.Info()
 	if err != nil {
 		log.Errorf("failed to get elasticsearch info: %s", err)
@@ -91,21 +90,21 @@ func (e *ElasticCheck) getClusterInfo()  {
 	//}
 
 	// Cluster name
-	e.clusterName = gjson.GetBytes(jsonBlob, "cluster_name").String();
+	e.clusterName = gjson.GetBytes(jsonBlob, "cluster_name").String()
 	if e.clusterName == "" {
 		e.clusterName = "unknown"
 		log.Warnf("unable to find elasticsearch cluster name")
 	}
 
 	// Cluster UUID
-	e.clusterUUID = gjson.GetBytes(jsonBlob, "cluster_uuid").String();
+	e.clusterUUID = gjson.GetBytes(jsonBlob, "cluster_uuid").String()
 	if e.clusterUUID == "" {
 		e.clusterUUID = "unknown"
 		log.Warnf("unable to find elasticsearch cluster UUID")
 	}
 
 	// Node name
-	e.nodeName = gjson.GetBytes(jsonBlob, "name").String();
+	e.nodeName = gjson.GetBytes(jsonBlob, "name").String()
 	if e.nodeName == "" {
 		e.nodeName = "unknown"
 		log.Warnf("unable to find elasticsearch node name")
@@ -117,7 +116,7 @@ func (e *ElasticCheck) getClusterInfo()  {
 // TODO: We can probably save cycles and skip this check on data nodes and client nodes
 func (e *ElasticCheck) isLeader() bool {
 	now := time.Now() // We want to check every 5m in case the leader changed
-	if now.Sub(e.lastLeaderCheck) >= 5 * time.Minute {
+	if now.Sub(e.lastLeaderCheck) >= 5*time.Minute {
 		e.lastLeaderCheck = now
 
 		currentState, err := e.leaderCheck()
@@ -146,7 +145,7 @@ func (e *ElasticCheck) leaderCheck() (bool, error) {
 	//	[{"id":"8iGt13GbTR63qMBN4F4imQ","host":"172.21.119.104","ip":"172.21.119.104","node":"i-ABDE"}]
 
 	jsonBlob := readJsonBlob(leaderInfo.Body)
-	leaderNode := gjson.GetBytes(jsonBlob, "0.node").String();
+	leaderNode := gjson.GetBytes(jsonBlob, "0.node").String()
 	if leaderNode == "" {
 		return false, log.Warnf("unable to find elasticsearch leader, defaulting to false")
 	}
@@ -184,7 +183,7 @@ func (e *ElasticCheck) getShards() ([]*model.ESShard, error) {
 	shards := make([]*model.ESShard, 0)
 
 	jsonBlob := readJsonBlob(shardInfo.Body)
-	shardsValue := gjson.GetBytes(jsonBlob, "@this");
+	shardsValue := gjson.GetBytes(jsonBlob, "@this")
 	if shardsValue.IsArray() {
 		for _, sv := range shardsValue.Array() {
 			// Get the node that this shard is on, if it is allocated
@@ -192,19 +191,19 @@ func (e *ElasticCheck) getShards() ([]*model.ESShard, error) {
 			if nodeName := gjson.Get(sv.Raw, "node").String(); nodeName != "" {
 				nodes = append(nodes, &model.ESNode{
 					Name: nodeName,
-					Id: gjson.Get(sv.Raw, "id").String(),
+					Id:   gjson.Get(sv.Raw, "id").String(),
 				})
 			}
 
 			// Get info for each shard
 			shards = append(shards, &model.ESShard{
-				IndexName: gjson.Get(sv.Raw, "index").String(),
-				Number: int32(gjson.Get(sv.Raw,"shard").Int()),
-				Primary: gjson.Get(sv.Raw, "prirep").String() == "p",
-				State: gjson.Get(sv.Raw, "state").String(),
-				Nodes: nodes,
-				DocsCount: uint32(gjson.Get(sv.Raw, "docs").Int()),
-				DocsSize: uint32(gjson.Get(sv.Raw, "store").Int()),
+				IndexName:        gjson.Get(sv.Raw, "index").String(),
+				Number:           int32(gjson.Get(sv.Raw, "shard").Int()),
+				Primary:          gjson.Get(sv.Raw, "prirep").String() == "p",
+				State:            gjson.Get(sv.Raw, "state").String(),
+				Nodes:            nodes,
+				DocsCount:        uint32(gjson.Get(sv.Raw, "docs").Int()),
+				DocsSize:         uint32(gjson.Get(sv.Raw, "store").Int()),
 				UnassignedReason: gjson.Get(sv.Raw, "unassigned.reason").String(),
 			})
 		}
@@ -231,21 +230,50 @@ func (e *ElasticCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.Mess
 	e.lastRun = time.Now()
 
 	// If we're the leader, then great lets continue (this will also handle continuous checks in case of leader failover)
-	if !e.isLeader()	{
+	if !e.isLeader() {
 		log.Trace("this node isn't the leader, skipping check...")
 		return nil, nil
 	}
 
-	shards, err := e.getShards();
+	shards, err := e.getShards()
 	if err != nil {
 		return nil, nil
 	}
 
-	for _, s := range shards {
-		log.Infof("%+v", s)
+	// Batching shards in groups of 250, then submitting
+	msgs := batchShards(cfg, 250, groupID, e.clusterName, shards)
+
+	log.Infof("Collected %d shards (via %d batches) in %v", len(shards), len(msgs), time.Now().Sub(e.lastRun))
+
+	return msgs, nil
+}
+
+// Shards are split up into a chunks of a configured size per message to limit the message size on intake.
+func batchShards(
+	cfg *config.AgentConfig,
+	maxBatchSize int,
+	groupID int32,
+	clusterName string,
+	shards []*model.ESShard,
+) []model.MessageBody {
+	groupSize := groupSize(len(shards), maxBatchSize)
+	batches := make([]model.MessageBody, 0, groupSize)
+
+	for len(shards) > 0 {
+		batchSize := min(maxBatchSize, len(shards))
+		batchShards := shards[:batchSize] // Shards for this particular batch
+
+		cs := &model.CollectorESShard{
+			HostName:    cfg.HostName,
+			Shards:      batchShards,
+			GroupId:     groupID,
+			GroupSize:   groupSize,
+			ClusterName: clusterName,
+		}
+
+		batches = append(batches, cs)
+		shards = shards[batchSize:]
 	}
 
-	log.Infof("Collected %d shards in %v", len(shards), time.Now().Sub(e.lastRun))
-
-	return nil, nil
+	return batches
 }
