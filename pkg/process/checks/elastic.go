@@ -26,7 +26,10 @@ type ElasticCheck struct {
 	sysInfo *model.SystemInfo
 	lastRun time.Time
 
+	nodeName string
 	clusterName string
+	clusterUUID string
+
 	isLeaderNode bool
 
 	es *elasticsearch6.Client
@@ -39,6 +42,7 @@ func (e *ElasticCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
 	log.Infof("elasticsearch client version: %s", elasticsearch6.Version)
 
 	// TODO: Does this work with ES5 if we're only accessing _cat endpoints?
+	// TODO: We should wrap this up in a retrier so that we try and handle intermittent cluster communication failures
 	client, err := elasticsearch6.NewDefaultClient() // Accesses localhost:9200
 	if err != nil {
 		_ = log.Errorf("failed to create elasticsearch client: %s", err)
@@ -46,9 +50,8 @@ func (e *ElasticCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
 	}
 	e.es = client
 
-	if e.clusterName, err = e.getClusterName(); err == nil {
-		log.Infof("elasticsearch cluster: %s", e.clusterName)
-	}
+	e.getClusterInfo()
+	e.isLeaderNode = e.isLeader()
 }
 
 // Not my fault: https://github.com/elastic/go-elasticsearch/blob/master/_examples/encoding/gjson.go
@@ -58,23 +61,44 @@ func readJsonBlob(r io.Reader) []byte {
 	return b.Bytes()
 }
 
-func (e *ElasticCheck) getClusterName() (string, error) {
+func (e *ElasticCheck) getClusterInfo()  {
 	esInfo, err := e.es.Info()
 	if err != nil {
-		return "", log.Errorf("failed to get elasticsearch info: %s", err)
+		log.Errorf("failed to get elasticsearch info: %s", err)
+		return
 	}
 
 	defer esInfo.Body.Close()
-
+	jsonBlob := readJsonBlob(esInfo.Body)
 	log.Infof("ES Info: %+v", esInfo)
 
-	jsonBlob := readJsonBlob(esInfo.Body)
-	cluster := gjson.GetBytes(jsonBlob, "cluster_name").String();
-	if cluster == "" {
-		return "", log.Errorf("unable to find elasticsearch cluster name")
+	// Cluster name
+	e.clusterName = gjson.GetBytes(jsonBlob, "cluster_name").String();
+	if e.clusterName == "" {
+		e.clusterName = "unknown"
+		log.Errorf("unable to find elasticsearch cluster name")
 	}
 
-	return cluster, nil
+	// Cluster UUID
+	e.clusterUUID = gjson.GetBytes(jsonBlob, "cluster_uuid").String();
+	if e.clusterUUID == "" {
+		e.clusterUUID = "unknown"
+		log.Errorf("unable to find elasticsearch cluster UUID")
+	}
+
+	// Node name
+	e.nodeName = gjson.GetBytes(jsonBlob, "name").String();
+	if e.nodeName == "" {
+		e.nodeName = "unknown"
+		log.Errorf("unable to find elasticsearch node name")
+	}
+
+	log.Infof("elasticsearch cluster: %s (%s), node: %s", e.clusterName, e.clusterUUID, e.nodeName)
+}
+
+func (e *ElasticCheck) isLeader() bool {
+	// TODO
+	return false
 }
 
 // Name returns the name of the ElasticCheck.
