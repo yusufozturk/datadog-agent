@@ -377,8 +377,10 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 	}
 
 	// Elasticsearch check
-	if config.Datadog.GetBool("elastic_check") {
-		a.ElasticEnabled = true
+	if k := key(ns, "elastic_check"); config.Datadog.IsSet(k) {
+		if config.Datadog.GetBool(k) {
+			a.ElasticEnabled = true
+		}
 	}
 
 	return nil

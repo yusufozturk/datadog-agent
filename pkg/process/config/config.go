@@ -223,6 +223,7 @@ func NewDefaultAgentConfig(canAccessContainers bool) *AgentConfig {
 			"rtcontainer": 2 * time.Second,
 			"connections": 30 * time.Second,
 			"pod":         10 * time.Second,
+			"elastic":     30 * time.Second,
 		},
 
 		// DataScrubber to hide command line sensitive words
@@ -409,6 +410,7 @@ func loadEnvVariables() {
 	// The following environment variables will be loaded in the order listed, meaning variables
 	// further down the list may override prior variables.
 	for _, variable := range []struct{ env, cfg string }{
+		{"DD_ES_CHECK", "process_config.elastic_check"},
 		{"DD_PROCESS_AGENT_CONTAINER_SOURCE", "process_config.container_source"},
 		{"DD_SCRUB_ARGS", "process_config.scrub_args"},
 		{"DD_STRIP_PROCESS_ARGS", "process_config.strip_proc_arguments"},
