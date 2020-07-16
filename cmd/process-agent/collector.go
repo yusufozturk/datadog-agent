@@ -302,6 +302,8 @@ func (l *Collector) consumePayloads(results *api.WeightedQueue, fwd forwarder.Fo
 				responses, err = fwd.SubmitProcessChecks(forwarderPayload, payload.headers)
 			case checks.RTProcess.Name():
 				responses, err = fwd.SubmitRTProcessChecks(forwarderPayload, payload.headers)
+			case checks.Elasticsearch.Name():
+				responses, err = fwd.SubmitElasticChecks(forwarderPayload, payload.headers)
 			case checks.Container.Name():
 				responses, err = fwd.SubmitContainerChecks(forwarderPayload, payload.headers)
 			case checks.RTContainer.Name():

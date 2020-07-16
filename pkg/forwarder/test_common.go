@@ -123,6 +123,11 @@ func (tf *MockedForwarder) SubmitRTProcessChecks(payload Payloads, extra http.He
 	return nil, tf.Called(payload, extra).Error(0)
 }
 
+// SubmitElasticChecks mock
+func (tf *MockedForwarder) SubmitElasticChecks(payload Payloads, extra http.Header) (chan Response, error) {
+	return nil, tf.Called(payload, extra).Error(0)
+}
+
 // SubmitContainerChecks mock
 func (tf *MockedForwarder) SubmitContainerChecks(payload Payloads, extra http.Header) (chan Response, error) {
 	return nil, tf.Called(payload, extra).Error(0)

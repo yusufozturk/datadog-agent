@@ -243,7 +243,7 @@ func (e *ElasticCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.Mess
 	// Batching shards in groups of 250, then submitting
 	msgs := batchShards(cfg, 250, groupID, e.clusterName, shards)
 
-	log.Infof("Collected %d shards (via %d batches) in %v", len(shards), len(msgs), time.Now().Sub(e.lastRun))
+	log.Infof("collected %d shards (submitting via %d batches)", len(shards), len(msgs))
 
 	return msgs, nil
 }

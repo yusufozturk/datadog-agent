@@ -146,6 +146,7 @@ type Forwarder interface {
 	SubmitMetadata(payload Payloads, extra http.Header) error
 	SubmitProcessChecks(payload Payloads, extra http.Header) (chan Response, error)
 	SubmitRTProcessChecks(payload Payloads, extra http.Header) (chan Response, error)
+	SubmitElasticChecks(payload Payloads, extra http.Header) (chan Response, error)
 	SubmitContainerChecks(payload Payloads, extra http.Header) (chan Response, error)
 	SubmitRTContainerChecks(payload Payloads, extra http.Header) (chan Response, error)
 	SubmitConnectionChecks(payload Payloads, extra http.Header) (chan Response, error)
@@ -438,6 +439,13 @@ func (f *DefaultForwarder) SubmitRTProcessChecks(payload Payloads, extra http.He
 	transactionsIntakeRTProcesses.Add(1)
 
 	return f.submitProcessLikePayload(rtProcessesEndpoint, payload, extra, false)
+}
+
+// SubmitContainerChecks sends container checks
+func (f *DefaultForwarder) SubmitElasticChecks(payload Payloads, extra http.Header) (chan Response, error) {
+	transactionsIntakeContainer.Add(1)
+
+	return f.submitProcessLikePayload(processesEndpoint, payload, extra, true)
 }
 
 // SubmitContainerChecks sends container checks
