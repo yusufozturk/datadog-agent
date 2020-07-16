@@ -1720,7 +1720,9 @@ deploy_windows_testing-a7:
 # --------------
 
 # Trim start / end spaces & replace spaces by | to separate platform list
-.kitchen_load_platforms: &kitchen_load_platforms export TEST_PLATFORMS=$(echo $PLATFORMS | awk '{$1=$1};1' | tr -s " " "|")
+.kitchen_load_platforms: &kitchen_load_platforms |
+  export TEST_PLATFORMS=$(echo $PLATFORMS | awk '{$1=$1};1' | tr -s " " "|")
+  echo $TEST_PLATFORMS
 
 .kitchen_test_chef:
   script:
