@@ -1,0 +1,20 @@
+namespace dsd.fb;
+
+enum MetricType:byte {Gauge = 0, Timer, Histogram, Set, Distribution = 4}
+enum Version:byte {v0 = 0 }
+
+
+table Metric {
+    type:MetricType;
+    name:string;
+    tags:[string];
+    value:float;
+    sampleRate:float;
+}
+
+table Payload {
+    v:Version= v0;
+    metrics:[Metric];
+}
+
+root_type Payload;
