@@ -77,6 +77,21 @@ func (e *ElasticCheck) getClusterInfo()  {
 	jsonBlob := readJsonBlob(esInfo.Body)
 	log.Infof("ES Info: %+v", esInfo)
 
+	// Example output:
+	//{
+	//  "name" : "i-ABC",
+	//  "cluster_name" : "dd-test",
+	//  "cluster_uuid" : "HckBgZQNOJgy8eQG8HYOSz",
+	//  "version" : {
+	//    "number" : "5.6.2",
+	//    "build_hash" : "57e20f3",
+	//    "build_date" : "2017-09-23T13:16:45.703Z",
+	//    "build_snapshot" : false,
+	//    "lucene_version" : "6.6.1"
+	//  },
+	//  "tagline" : "You Know, for Search"
+	//}
+
 	// Cluster name
 	e.clusterName = gjson.GetBytes(jsonBlob, "cluster_name").String();
 	if e.clusterName == "" {
@@ -113,8 +128,10 @@ func (e *ElasticCheck) isLeader() bool {
 	}
 	defer leaderInfo.Body.Close()
 
+	// Example output:
+	//	[{"id":"8iGt13GbTR63qMBN4F4imQ","host":"172.21.119.104","ip":"172.21.119.104","node":"i-ABDE"}]
 	jsonBlob := readJsonBlob(leaderInfo.Body)
-	leaderNode := gjson.GetBytes(jsonBlob, "node").String();
+	leaderNode := gjson.GetBytes(jsonBlob, "0.node").String();
 	if leaderNode == "" {
 		log.Warnf("unable to find elasticsearch leader, defaulting to false")
 		return false
