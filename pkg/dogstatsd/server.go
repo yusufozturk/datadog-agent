@@ -22,6 +22,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/dogstatsd/dsd/fb"
 	"github.com/DataDog/datadog-agent/pkg/dogstatsd/listeners"
 	"github.com/DataDog/datadog-agent/pkg/dogstatsd/mapper"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
@@ -47,6 +48,13 @@ var (
 		[]string{"message_type", "state"}, "Count of service checks/events/metrics processed by dogstatsd")
 	tlmProcessedErrorTags = map[string]string{"message_type": "metrics", "state": "error"}
 	tlmProcessedOkTags    = map[string]string{"message_type": "metrics", "state": "ok"}
+	metricTypeMapper      = map[fb.MetricType]metricType{
+		fb.MetricTypeGauge:        gaugeType,
+		fb.MetricTypeTimer:        countType,
+		fb.MetricTypeHistogram:    histogramType,
+		fb.MetricTypeSet:          setType,
+		fb.MetricTypeDistribution: distributionType,
+	}
 )
 
 func init() {
@@ -70,6 +78,7 @@ type Server struct {
 	sharedPacketPool          *listeners.PacketPool
 	Statistics                *util.Stats
 	Started                   bool
+	binary                    bool
 	stopChan                  chan bool
 	health                    *health.Handle
 	metricPrefix              string
@@ -188,6 +197,7 @@ func NewServer(aggregator *aggregator.BufferedAggregator) (*Server, error) {
 
 	s := &Server{
 		Started:                   true,
+		binary:                    config.Datadog.GetBool("dogstatsd_use_binary_protocol"),
 		Statistics:                stats,
 		packetsIn:                 packetsChannel,
 		sharedPacketPool:          sharedPacketPool,
@@ -335,6 +345,68 @@ func nextMessage(packet *[]byte) (message []byte) {
 }
 
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
+	if s.binary {
+		s.parseBinaryPackets(batcher, parser, packets)
+	}
+	s.parsePlainTextPackets(batcher, parser, packets)
+}
+
+func (s *Server) parseBinaryPackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
+	for _, packet := range packets {
+		originTagger := originTags{origin: packet.Origin}
+		log.Tracef("Dogstatsd binary packet received")
+		// One FB per packet
+		payload := fb.GetRootAsPayload(packet.Contents, 0)
+		for i := payload.MetricsLength(); i > 0; i-- {
+			metric := new(fb.Metric)
+			if payload.Metrics(metric, i) {
+				sample, err := s.readBinarySample(parser, metric, originTagger.getTags)
+				if err == nil {
+					batcher.appendSample(sample)
+				} else {
+					log.Warn(err.Error)
+				}
+				batcher.appendSample(sample)
+			}
+		}
+		batcher.flush()
+	}
+}
+
+func (s *Server) readBinarySample(parser *parser, message *fb.Metric, originTagsFunc func() []string) (metrics.MetricSample, error) {
+	sample := dogstatsdMetricSample{
+		name:       string(message.Name()),
+		value:      message.Value(),
+		sampleRate: message.SampleRate(),
+		metricType: metricTypeMapper[message.Type()],
+		tags:       s.decodeBinTags(message),
+		setValue:   "",
+	}
+
+	if s.mapper != nil && len(sample.tags) == 0 {
+		mapResult := s.mapper.Map(sample.name)
+		if mapResult != nil {
+			sample.name = mapResult.Name
+			sample.tags = append(sample.tags, mapResult.Tags...)
+		}
+	}
+	metricSample := enrichMetricSample(sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, originTagsFunc, s.entityIDPrecedenceEnabled)
+	metricSample.Tags = append(metricSample.Tags, s.extraTags...)
+	dogstatsdMetricPackets.Add(1)
+	tlmProcessed.IncWithTags(tlmProcessedOkTags)
+	return metricSample, nil
+}
+
+func (s *Server) decodeBinTags(message *fb.Metric) []string {
+	l := message.TagsLength()
+	tags := make([]string, l)
+	for i := message.TagsLength(); i > 0; i-- {
+		tags[i] = string(message.Tags(i))
+	}
+	return tags
+}
+
+func (s *Server) parsePlainTextPackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
 	for _, packet := range packets {
 		originTagger := originTags{origin: packet.Origin}
 		log.Tracef("Dogstatsd receive: %q", packet.Contents)

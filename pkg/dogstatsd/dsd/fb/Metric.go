@@ -63,28 +63,28 @@ func (rcv *Metric) TagsLength() int {
 	return 0
 }
 
-func (rcv *Metric) Value() float32 {
+func (rcv *Metric) Value() float64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
 	if o != 0 {
-		return rcv._tab.GetFloat32(o + rcv._tab.Pos)
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
 	}
 	return 0.0
 }
 
-func (rcv *Metric) MutateValue(n float32) bool {
-	return rcv._tab.MutateFloat32Slot(10, n)
+func (rcv *Metric) MutateValue(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(10, n)
 }
 
-func (rcv *Metric) SampleRate() float32 {
+func (rcv *Metric) SampleRate() float64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
 	if o != 0 {
-		return rcv._tab.GetFloat32(o + rcv._tab.Pos)
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
 	}
 	return 0.0
 }
 
-func (rcv *Metric) MutateSampleRate(n float32) bool {
-	return rcv._tab.MutateFloat32Slot(12, n)
+func (rcv *Metric) MutateSampleRate(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(12, n)
 }
 
 func MetricStart(builder *flatbuffers.Builder) {
@@ -102,11 +102,11 @@ func MetricAddTags(builder *flatbuffers.Builder, tags flatbuffers.UOffsetT) {
 func MetricStartTagsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
-func MetricAddValue(builder *flatbuffers.Builder, value float32) {
-	builder.PrependFloat32Slot(3, value, 0.0)
+func MetricAddValue(builder *flatbuffers.Builder, value float64) {
+	builder.PrependFloat64Slot(3, value, 0.0)
 }
-func MetricAddSampleRate(builder *flatbuffers.Builder, sampleRate float32) {
-	builder.PrependFloat32Slot(4, sampleRate, 0.0)
+func MetricAddSampleRate(builder *flatbuffers.Builder, sampleRate float64) {
+	builder.PrependFloat64Slot(4, sampleRate, 0.0)
 }
 func MetricEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

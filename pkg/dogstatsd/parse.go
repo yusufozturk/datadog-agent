@@ -39,6 +39,7 @@ func newParser() *parser {
 	}
 }
 
+
 func findMessageType(message []byte) messageType {
 	if bytes.HasPrefix(message, eventPrefix) {
 		return eventType
