@@ -81,6 +81,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/dustin/go-humanize v1.0.0
+	github.com/elastic/go-elasticsearch/v6 v6.8.10
 	github.com/elastic/go-libaudit v0.4.0
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
 	github.com/fatih/color v1.9.0
