@@ -1,6 +1,6 @@
 namespace dsd.fb;
 
-enum MetricType:byte {Gauge = 0, Timer, Histogram, Set, Distribution = 4}
+enum MetricType:byte {Gauge = 0, Timer, Histogram, Set, Distribution, Count = 5}
 enum Version:byte {v0 = 0 }
 
 

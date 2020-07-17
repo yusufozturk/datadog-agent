@@ -52,10 +52,11 @@ var (
 	tlmProcessedOkTags    = map[string]string{"message_type": "metrics", "state": "ok"}
 	metricTypeMapper      = map[fb.MetricType]metricType{
 		fb.MetricTypeGauge:        gaugeType,
-		fb.MetricTypeTimer:        countType,
+		fb.MetricTypeTimer:        timingType,
 		fb.MetricTypeHistogram:    histogramType,
 		fb.MetricTypeSet:          setType,
 		fb.MetricTypeDistribution: distributionType,
+		fb.MetricTypeCount:        countType,
 	}
 )
 
@@ -386,7 +387,7 @@ func (s *Server) readBinarySample(parser *parser, message *fb.Metric, originTags
 		}
 	}()
 	sample := dogstatsdMetricSample{
-		name:       string(message.Name()),
+		name:       parser.interner.LoadOrStore(message.Name()),
 		value:      message.Value(),
 		sampleRate: message.SampleRate(),
 		metricType: metricTypeMapper[message.Type()],

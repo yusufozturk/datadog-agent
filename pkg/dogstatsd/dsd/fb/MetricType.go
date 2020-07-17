@@ -12,6 +12,7 @@ const (
 	MetricTypeHistogram    MetricType = 2
 	MetricTypeSet          MetricType = 3
 	MetricTypeDistribution MetricType = 4
+	MetricTypeCount        MetricType = 5
 )
 
 var EnumNamesMetricType = map[MetricType]string{
@@ -20,6 +21,7 @@ var EnumNamesMetricType = map[MetricType]string{
 	MetricTypeHistogram:    "Histogram",
 	MetricTypeSet:          "Set",
 	MetricTypeDistribution: "Distribution",
+	MetricTypeCount:        "Count",
 }
 
 var EnumValuesMetricType = map[string]MetricType{
@@ -28,6 +30,7 @@ var EnumValuesMetricType = map[string]MetricType{
 	"Histogram":    MetricTypeHistogram,
 	"Set":          MetricTypeSet,
 	"Distribution": MetricTypeDistribution,
+	"Count":        MetricTypeCount,
 }
 
 func (v MetricType) String() string {
