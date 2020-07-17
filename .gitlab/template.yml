@@ -8,7 +8,7 @@ variables:
   kitchen_win2019: "win2019,urn,MicrosoftWindowsServer:WindowsServer:2019-Datacenter-Core:2019.0.20190410"
   kitchen_centos69: "centos-69,urn,OpenLogic:CentOS:6.9:6.9.20180530"
   kitchen_centos77: "centos-77,urn,OpenLogic:CentOS:7.7:7.7.201912090"
-  kitchen_centos82: "centos-82,urn,OpenLogic:CentOS:8_2:8.2.2020062400"
+  kitchen_rhel82: "rhel-82,urn,RedHat:RHEL:8.2:8.2.2020050811"
   kitchen_sles12: "sles-12,urn,SUSE:SLES-BYOS:12-SP4:2019.11.13"
   kitchen_sles15: "sles-15,urn,SUSE:SLES-BYOS:15:2019.11.15"
   kitchen_debian8: "debian-8,urn,credativ:Debian:8:8.20190313.0"
