@@ -10,11 +10,7 @@ table Metric {
     tags:[string];
     value:float64;
     sampleRate:float64;
-}
-
-table Payload {
     v:Version= v0;
-    metrics:[Metric];
 }
 
-root_type Payload;
+root_type Metric;

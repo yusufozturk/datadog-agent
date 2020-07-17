@@ -8,6 +8,7 @@ package dogstatsd
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"expvar"
 	"fmt"
@@ -32,6 +33,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	flatbuffers "github.com/google/flatbuffers/go"
 )
 
 var (
@@ -347,33 +349,42 @@ func nextMessage(packet *[]byte) (message []byte) {
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
 	if s.binary {
 		s.parseBinaryPackets(batcher, parser, packets)
+	} else {
+		s.parsePlainTextPackets(batcher, parser, packets)
 	}
-	s.parsePlainTextPackets(batcher, parser, packets)
 }
 
 func (s *Server) parseBinaryPackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
 	for _, packet := range packets {
 		originTagger := originTags{origin: packet.Origin}
-		log.Tracef("Dogstatsd binary packet received")
-		// One FB per packet
-		payload := fb.GetRootAsPayload(packet.Contents, 0)
-		for i := payload.MetricsLength(); i > 0; i-- {
-			metric := new(fb.Metric)
-			if payload.Metrics(metric, i) {
-				sample, err := s.readBinarySample(parser, metric, originTagger.getTags)
-				if err == nil {
-					batcher.appendSample(sample)
-				} else {
-					log.Warn(err.Error)
-				}
+		log.Debugf("Dogstatsd binary packet received, total length=%d", len(packet.Contents))
+		offset := 0
+		for offset < len(packet.Contents) {
+			log.Debugf("Dogstatsd binary metric found in packet at offset: %d", offset)
+			metricLength := int(binary.BigEndian.Uint16(packet.Contents[offset:]))
+			log.Debugf("Dogstatsd binary metric length: %d, found at offset: %d", metricLength, offset)
+			offset += 2
+			log.Debugf("Reading Dogstatsd binary metric at offset: %d", offset)
+			metric := fb.GetRootAsMetric(packet.Contents, flatbuffers.UOffsetT(offset))
+			offset += metricLength
+			sample, err := s.readBinarySample(parser, metric, originTagger.getTags)
+			if err == nil {
 				batcher.appendSample(sample)
+			} else {
+				log.Warn(err.Error)
 			}
+			batcher.appendSample(sample)
 		}
 		batcher.flush()
 	}
 }
 
 func (s *Server) readBinarySample(parser *parser, message *fb.Metric, originTagsFunc func() []string) (metrics.MetricSample, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warnf("Recovered while parsing DSD binary packet, ", r)
+		}
+	}()
 	sample := dogstatsdMetricSample{
 		name:       string(message.Name()),
 		value:      message.Value(),
@@ -400,7 +411,7 @@ func (s *Server) readBinarySample(parser *parser, message *fb.Metric, originTags
 func (s *Server) decodeBinTags(message *fb.Metric) []string {
 	l := message.TagsLength()
 	tags := make([]string, l)
-	for i := message.TagsLength(); i > 0; i-- {
+	for i := message.TagsLength() - 1; i >= 0; i-- {
 		tags[i] = string(message.Tags(i))
 	}
 	return tags

@@ -87,8 +87,20 @@ func (rcv *Metric) MutateSampleRate(n float64) bool {
 	return rcv._tab.MutateFloat64Slot(12, n)
 }
 
+func (rcv *Metric) V() Version {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return Version(rcv._tab.GetInt8(o + rcv._tab.Pos))
+	}
+	return 0
+}
+
+func (rcv *Metric) MutateV(n Version) bool {
+	return rcv._tab.MutateInt8Slot(14, int8(n))
+}
+
 func MetricStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(6)
 }
 func MetricAddType(builder *flatbuffers.Builder, type_ MetricType) {
 	builder.PrependInt8Slot(0, int8(type_), 0)
@@ -107,6 +119,9 @@ func MetricAddValue(builder *flatbuffers.Builder, value float64) {
 }
 func MetricAddSampleRate(builder *flatbuffers.Builder, sampleRate float64) {
 	builder.PrependFloat64Slot(4, sampleRate, 0.0)
+}
+func MetricAddV(builder *flatbuffers.Builder, v Version) {
+	builder.PrependInt8Slot(5, int8(v), 0)
 }
 func MetricEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

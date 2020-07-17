@@ -8,6 +8,8 @@ package listeners
 import (
 	"sync"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/config"
 )
 
 const messageSeparator = byte('\n')
@@ -18,6 +20,7 @@ type packetAssembler struct {
 	packet       *Packet
 	packetLength int
 	// assembled packets are pushed into this buffer
+	binary           bool
 	packetsBuffer    *packetsBuffer
 	sharedPacketPool *PacketPool
 	flushTimer       *time.Ticker
@@ -34,6 +37,7 @@ func newPacketAssembler(flushTimer time.Duration, packetsBuffer *packetsBuffer, 
 		packetsBuffer:    packetsBuffer,
 		flushTimer:       time.NewTicker(flushTimer),
 		closeChannel:     make(chan struct{}),
+		binary:           config.Datadog.GetBool("dogstatsd_use_binary_protocol"),
 	}
 	go packetAssembler.flushLoop()
 	return packetAssembler
@@ -57,9 +61,14 @@ func (p *packetAssembler) addMessage(message []byte) {
 	if p.packetLength == 0 {
 		p.packetLength = copy(p.packet.buffer, message)
 	} else if len(p.packet.buffer) >= len(message)+p.packetLength+1 {
-		p.packet.buffer[p.packetLength] = messageSeparator
-		n := copy(p.packet.buffer[p.packetLength+1:], message)
-		p.packetLength += n + 1
+		if p.binary {
+			n := copy(p.packet.buffer[p.packetLength:], message)
+			p.packetLength += n
+		} else {
+			p.packet.buffer[p.packetLength] = messageSeparator
+			n := copy(p.packet.buffer[p.packetLength+1:], message)
+			p.packetLength += n + 1
+		}
 	} else {
 		p.flush()
 		p.packetLength = copy(p.packet.buffer, message)
