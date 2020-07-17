@@ -1691,7 +1691,7 @@ deploy_windows_testing-a7:
 .kitchen_os_centos: &kitchen_os_centos
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
-    - export PLATFORMS="$kitchen_centos69 $kitchen_centos77 $kitchen_rhel81"
+    - export PLATFORMS="$kitchen_centos69 $kitchen_centos77 $kitchen_rhel82"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
