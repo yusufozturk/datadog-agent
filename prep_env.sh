@@ -13,6 +13,8 @@ export PACKAGE_ARCH=amd64
 export DESTINATION_DEB="datadog-agent_6_amd64.deb"
 export DESTINATION_DBG_DEB="datadog-agent-dbg_6_amd64.deb"
 export RELEASE_VERSION=$RELEASE_VERSION_6
+export OMNIBUS_RUBY_VERSION="jaime/hackadog"
+export OMNIBUS_SOFTWARE_VERSION="jaime/hackadog"
 
 source /root/.bashrc
 conda activate $CONDA_ENV
