@@ -1,8 +1,8 @@
 name "psutil"
-default_version "5.6.7"
+default_version "5.7.0"
 
-version "5.6.7" do
-  source sha256: "ebbed18bf912fa4981d05c5c1a0cacec2aa8c594e1608f0cf5cc7a3d4f63d4d4"
+version "5.7.0" do
+  source sha256: "0a53c5260a096aeefdb4060512bbc3cbdec83dd8c20c5114421790b019dc61ff"
 end
 
 dependency "python"
