@@ -71,7 +71,6 @@ blacklist_packages = Array.new
 
 # We build these manually
 blacklist_packages.push(/^aerospike==/)
-blacklist_packages.push(/^psutil==/)
 
 if suse?
   blacklist_folders.push('aerospike')  # Temporarily blacklist Aerospike until builder supports new dependency
@@ -104,6 +103,7 @@ if arm? || !_64_bit? || (windows? && windows_arch_i386?)
 end
 
 final_constraints_file = 'final_constraints-py3.txt'
+agent_requirements_pre_file = 'agent_requirements-py3.pre.txt'
 agent_requirements_file = 'agent_requirements-py3.txt'
 filtered_agent_requirements_in = 'agent_requirements-py3.in'
 agent_requirements_in = 'agent_requirements.in'
@@ -195,7 +195,8 @@ build do
     else
       command "#{pip} install --no-deps .", :env => nix_build_env, :cwd => "#{project_dir}/datadog_checks_base"
       command "#{pip} install --no-deps .", :env => nix_build_env, :cwd => "#{project_dir}/datadog_checks_downloader"
-      command "#{python} -m piptools compile --generate-hashes --output-file #{install_dir}/#{agent_requirements_file} #{static_reqs_out_file}", :env => nix_build_env
+      command "#{python} -m piptools compile --generate-hashes --output-file #{install_dir}/#{agent_requirements_pre_file} #{static_reqs_out_file}", :env => nix_build_env
+      command "sed -r '/psutil==/,+12d' #{install_dir}/#{agent_requirements_pre_file} > #{install_dir}/#{agent_requirements_file}"
     end
 
     # From now on we don't need piptools anymore, uninstall its deps so we don't include them in the final artifact
