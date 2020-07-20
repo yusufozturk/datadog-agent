@@ -1691,7 +1691,7 @@ deploy_windows_testing-a7:
     - rsync -azr --delete ./ $SRC_PATH
     - export TEST_PLATFORMS="centos-69,urn,OpenLogic:CentOS:6.9:6.9.20180530"
     - export TEST_PLATFORMS="$TEST_PLATFORMS|centos-77,urn,OpenLogic:CentOS:7.7:7.7.201912090"
-    - export TEST_PLATFORMS="$TEST_PLATFORMS|rhel-81,urn,RedHat:RHEL:8.1:8.1.2020020415"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|rhel-81,id,/subscriptions/8c56d827-5f07-45ce-8f2b-6c5001db5c6f/resourceGroups/kitchen-test-images/providers/Microsoft.Compute/galleries/kitchenimages/images/RHEL-8.1/versions/1.0.0"
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/kitchen_setup.sh
 
