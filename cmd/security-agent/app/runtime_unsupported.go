@@ -1,4 +1,4 @@
-// +build linux
+// +build !linux
 
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
@@ -8,11 +8,8 @@
 package app
 
 import (
-	"github.com/pkg/errors"
-
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/restart"
-	secagent "github.com/DataDog/datadog-agent/pkg/security/agent"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -23,15 +20,6 @@ func startRuntimeSecurity(stopper restart.Stopper) error {
 		return nil
 	}
 
-	agent, err := secagent.NewRuntimeSecurityAgent()
-	if err != nil {
-		return errors.Wrap(err, "unable to create a runtime security agent instance")
-	}
-	agent.Start()
-
-	stopper.Add(agent)
-
-	log.Info("Datadog runtime security agent is now running")
-
+	log.Error("Datadog runtime security agent is only supported on Linux")
 	return nil
 }
