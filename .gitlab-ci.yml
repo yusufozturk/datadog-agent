@@ -1,13 +1,29 @@
 
-test_no_set_e_script:
+not_found:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
   tags: [ "runner:main", "size:large" ]
   dependencies: []
   script:
-    - "false"
+    - "a=$(asdasdasd)"
     - "true"
 
-test_no_set_e_subshell:
+error_exit:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
+  tags: [ "runner:main", "size:large" ]
+  dependencies: []
+  script:
+    - "a=$(false)"
+    - "true"
+    
+export_not_found:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
+  tags: [ "runner:main", "size:large" ]
+  dependencies: []
+  script:
+    - "export a=$(asdasdasd)"
+    - "true"
+
+export_error_exit:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
   tags: [ "runner:main", "size:large" ]
   dependencies: []
@@ -15,20 +31,38 @@ test_no_set_e_subshell:
     - "export a=$(false)"
     - "true"
 
-test_set_e_script:
+sete_not_found:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
   tags: [ "runner:main", "size:large" ]
   dependencies: []
   script:
     - set -e
-    - "false"
+    - "a=$(asdasdasd)"
     - "true"
 
-test_set_e_subshell:
+sete_error_exit:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
   tags: [ "runner:main", "size:large" ]
   dependencies: []
   script:
-  - set -e
-  - "export a=$(false)"
-  - "true"
+    - set -e
+    - "a=$(false)"
+    - "true"
+
+sete_export_not_found:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
+  tags: [ "runner:main", "size:large" ]
+  dependencies: []
+  script:
+    - set -e
+    - "export a=$(asdasdasd)"
+    - "true"
+
+sete_export_error_exit:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:v2752318-c3e56c1
+  tags: [ "runner:main", "size:large" ]
+  dependencies: []
+  script:
+    - set -e
+    - "export a=$(false)"
+    - "true"
