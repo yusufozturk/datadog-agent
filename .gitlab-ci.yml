@@ -4,7 +4,7 @@ test_no_set_e_script:
   tags: [ "runner:main", "size:large" ]
   dependencies: []
   script:
-    - "false"
+    - "asdasdasd"
     - "true"
 
 test_no_set_e_subshell:
@@ -12,7 +12,7 @@ test_no_set_e_subshell:
   tags: [ "runner:main", "size:large" ]
   dependencies: []
   script:
-    - "a=$(false)"
+    - "a=$(asdasdasd)"
     - "true"
 
 test_set_e_script:
@@ -21,7 +21,7 @@ test_set_e_script:
   dependencies: []
   script:
     - set -e
-    - "false"
+    - "asdasdasd"
     - "true"
 
 test_set_e_subshell:
@@ -30,5 +30,5 @@ test_set_e_subshell:
   dependencies: []
   script:
   - set -e
-  - "a=$(false)"
+  - "a=$(asdasdasd)"
   - "true"
