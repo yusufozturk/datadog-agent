@@ -6,6 +6,7 @@
 package obfuscate
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
@@ -79,16 +80,6 @@ func (p *jsonObfuscator) setKey() {
 	p.wiped = false
 }
 
-func trimSideQuotes(quotedString []byte) []byte {
-	if len(quotedString) > 0 && quotedString[0] == '"' {
-		quotedString = quotedString[1:]
-	}
-	if len(quotedString) > 0 && quotedString[len(quotedString)-1] == '"' {
-		quotedString = quotedString[0 : len(quotedString)-1]
-	}
-	return quotedString
-}
-
 func (p *jsonObfuscator) obfuscate(data []byte) (string, error) {
 	var out strings.Builder
 
@@ -123,7 +114,11 @@ func (p *jsonObfuscator) obfuscate(data []byte) (string, error) {
 			// done scanning value
 			p.setKey()
 			if p.transformingValue && p.transformer != nil {
-				result := p.transformer(string(trimSideQuotes(valBuf)))
+				v, err := strconv.Unquote(string(valBuf))
+				if err != nil {
+					v = string(valBuf)
+				}
+				result := p.transformer(v)
 				out.Write([]byte(`"`))
 				out.Write([]byte(result))
 				out.Write([]byte(`"`))
