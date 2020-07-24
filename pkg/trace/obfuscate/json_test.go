@@ -129,18 +129,13 @@ func BenchmarkObfuscateJSON(b *testing.B) {
 	if len(jsonSuite) == 0 {
 		b.Fatal("no test suite loaded")
 	}
-	var ran int
 	for i := len(jsonSuite) - 1; i >= 0; i-- {
-		ran++
-		if ran > 3 {
-			// run max 3 benchmarks
-			break
-		}
 		test := jsonSuite[i]
-		b.Run(strconv.Itoa(len(test.In)), func(b *testing.B) {
+		obf := NewObfuscator(nil).newJSONObfuscator(cfg)
+		b.Run(test.Tag, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				_, err := NewObfuscator(nil).newJSONObfuscator(cfg).obfuscate([]byte(test.In))
+				_, err := obf.obfuscate([]byte(test.In))
 				if !test.DontNormalize && err != nil {
 					b.Fatal(err)
 				}
