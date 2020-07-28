@@ -16,8 +16,8 @@ set PKG_OUTDIR=c:\mnt\build-out\%CI_JOB_ID%
 set OMNIBUS_BUILD=agent.omnibus-build
 set OMNIBUS_ARGS=--python-runtimes "%PY_RUNTIMES%" --log-level "debug"
 
-if "%OMNIBUS_TARGET%" == "iot" set OMNIBUS_ARGS=--iot
-if "%OMNIBUS_TARGET%" == "dogstatsd" set OMNIBUS_BUILD=dogstatsd.omnibus-build && set OMNIBUS_ARGS=
+if "%OMNIBUS_TARGET%" == "iot" set OMNIBUS_ARGS=--iot --log-level "debug"
+if "%OMNIBUS_TARGET%" == "dogstatsd" set OMNIBUS_BUILD=dogstatsd.omnibus-build && set OMNIBUS_ARGS=--log-level "debug"
 if "%OMNIBUS_TARGET%" == "agent_binaries" set OMNIBUS_ARGS=%OMNIBUS_ARGS% --agent-binaries
 
 mkdir \dev\go\src\github.com\DataDog\datadog-agent
