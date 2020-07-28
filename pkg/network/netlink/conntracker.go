@@ -209,19 +209,10 @@ func (ctr *realConntracker) Close() {
 }
 
 func (ctr *realConntracker) loadInitialState(events <-chan Event) {
-	gen := getNthGeneration(generationLength, time.Now().UnixNano(), 3)
-
 	for e := range events {
 		conns := DecodeAndReleaseEvent(e)
 		for _, c := range conns {
-			if len(ctr.state) < ctr.maxStateSize && isNAT(c) {
-				if k, ok := formatKey(c.Origin); ok {
-					ctr.state[k] = formatIPTranslation(c.Reply, gen)
-				}
-				if k, ok := formatKey(c.Reply); ok {
-					ctr.state[k] = formatIPTranslation(c.Origin, gen)
-				}
-			}
+			ctr.register(c)
 		}
 	}
 }

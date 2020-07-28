@@ -1,4 +1,3 @@
-
 /**
  * We need to pull in this header, which is depended upon by ptrace.h
  * and then re-define asm_volatile_goto which is unsupported in
@@ -442,8 +441,18 @@ static int read_conn_tuple(conn_tuple_t* t, tracer_status_t* status, struct sock
 }
 
 __attribute__((always_inline))
-static void update_conn_stats(conn_tuple_t* t, size_t sent_bytes, size_t recv_bytes, u64 ts) {
+static void update_latest_ts(u64 *ts) {
+    u64 zero = 0;
+    u64 _ts = ts ? *ts : bpf_ktime_get_ns();
+
+    // Update latest timestamp that we've seen - for connection expiration tracking
+    bpf_map_update_elem(&latest_ts, &zero, &_ts, BPF_ANY);
+}
+
+__attribute__((always_inline))
+static void update_conn_stats(conn_tuple_t* t, size_t sent_bytes, size_t recv_bytes) {
     conn_stats_ts_t* val;
+    u64 ts = bpf_ktime_get_ns();
 
     // initialize-if-no-exist the connection stat, and load it
     conn_stats_ts_t empty = {};
@@ -456,6 +465,8 @@ static void update_conn_stats(conn_tuple_t* t, size_t sent_bytes, size_t recv_by
         __sync_fetch_and_add(&val->recv_bytes, recv_bytes);
         val->timestamp = ts;
     }
+
+    update_latest_ts(&ts);
 }
 
 __attribute__((always_inline))
@@ -484,6 +495,8 @@ static void update_tcp_stats(conn_tuple_t* t, tcp_stats_t stats) {
         val->rtt = stats.rtt >> 3;
         val->rtt_var = stats.rtt_var >> 2;
     }
+
+    update_latest_ts(NULL);
 }
 
 __attribute__((always_inline))
@@ -561,20 +574,13 @@ static void cleanup_tcp_conn(struct pt_regs* ctx, conn_tuple_t* tup) {
 
 __attribute__((always_inline))
 static int handle_message(conn_tuple_t* t, size_t sent_bytes, size_t recv_bytes) {
-    u64 zero = 0;
-    u64 ts = bpf_ktime_get_ns();
-
-    update_conn_stats(t, sent_bytes, recv_bytes, ts);
-
-    // Update latest timestamp that we've seen - for connection expiration tracking
-    bpf_map_update_elem(&latest_ts, &zero, &ts, BPF_ANY);
+    update_conn_stats(t, sent_bytes, recv_bytes);
     return 0;
 }
 
 __attribute__((always_inline))
 static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     conn_tuple_t t = {};
-    u64 ts = bpf_ktime_get_ns();
     u64 zero = 0;
 
     if (!read_conn_tuple(&t, status, sk, zero, CONN_TYPE_TCP)) {
@@ -583,9 +589,6 @@ static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
 
     tcp_stats_t stats = {.retransmits = 1, .rtt = 0, .rtt_var = 0 };
     update_tcp_stats(&t, stats);
-
-    // Update latest timestamp that we've seen - for connection expiration tracking
-    bpf_map_update_elem(&latest_ts, &zero, &ts, BPF_ANY);
     return 0;
 }
 
