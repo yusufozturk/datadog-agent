@@ -71,8 +71,8 @@ else
   if windows_arch_i386?
     dependency "vc_ucrt_redist"
 
-    source :url => "https://dd-agent-omnibus.s3.amazonaws.com/python-windows-#{version}-withcrt-x86.zip",
-            :sha256 => "212a3a2112ef0ca2fd4baebe71c149f89fa5bda4b746c102b7b292fe6e1209ef"
+    source :url => "https://dd-agent-omnibus.s3.amazonaws.com/python-windows-test-builder-x86.zip",
+            :sha256 => "ccec6742b1e91c482d922824136c63b01f0c857d06aac1e77a6b2755c9b47ed4"
   else
 
     # note that startring with 3.7.3 on Windows, the zip should be created without the built-in pip
