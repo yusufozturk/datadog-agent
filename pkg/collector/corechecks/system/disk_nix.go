@@ -28,7 +28,8 @@ var (
 // DiskCheck stores disk-specific additional fields
 type DiskCheck struct {
 	core.CheckBase
-	cfg *diskConfig
+	cfg            *diskConfig
+	lastIOStatsMap map[string]disk.IOCountersStat
 }
 
 // Run executes the check
@@ -101,7 +102,12 @@ func (c *DiskCheck) collectDiskMetrics(sender aggregator.Sender) error {
 	if err != nil {
 		return err
 	}
-	for deviceName, ioCounter := range iomap {
+	for deviceName, ioStats := range iomap {
+		lastIOStats, ok := c.lastIOStatsMap[deviceName]
+		if !ok {
+			log.Debug("New device stats (possible hotplug) - full stats unavailable this iteration.")
+			continue
+		}
 
 		tags := []string{}
 		tags = append(tags, fmt.Sprintf("device:%s", deviceName))
@@ -109,8 +115,10 @@ func (c *DiskCheck) collectDiskMetrics(sender aggregator.Sender) error {
 
 		tags = c.applyDeviceTags(deviceName, "", tags)
 
-		c.sendDiskMetrics(sender, ioCounter, tags)
+		c.sendDiskMetrics(sender, ioStats, lastIOStats, tags)
 	}
+
+	c.lastIOStatsMap = iomap
 
 	return nil
 }
@@ -133,13 +141,14 @@ func (c *DiskCheck) sendPartitionMetrics(sender aggregator.Sender, usage *disk.U
 
 }
 
-func (c *DiskCheck) sendDiskMetrics(sender aggregator.Sender, ioCounter disk.IOCountersStat, tags []string) {
+func (c *DiskCheck) sendDiskMetrics(sender aggregator.Sender, ioCounter, lastIoCounter disk.IOCountersStat, tags []string) {
 
 	// /1000 as psutil returns the value in ms
 	// Rate computes a rate of change between to consecutive check run.
 	// For cumulated time values like read and write times this a ratio between 0 and 1, we want it as a percentage so we *100 in advance
-	sender.Rate(fmt.Sprintf(diskMetric, "read_time_pct"), float64(ioCounter.ReadTime)*100/1000, "", tags)
-	sender.Rate(fmt.Sprintf(diskMetric, "write_time_pct"), float64(ioCounter.WriteTime)*100/1000, "", tags)
+	// Note this metrics are redundant with system.io.r_await and system.io.w_await from iostats
+	sender.Rate(fmt.Sprintf(diskMetric, "read_time_pct"), float64(incrementWithOverflow(ioCounter.ReadTime, lastIoCounter.ReadTime))*100/1000, "", tags)
+	sender.Rate(fmt.Sprintf(diskMetric, "write_time_pct"), float64(incrementWithOverflow(ioCounter.WriteTime, lastIoCounter.WriteTime))*100/1000, "", tags)
 }
 
 // Configure the disk check
