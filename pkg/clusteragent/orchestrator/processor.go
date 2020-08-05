@@ -12,7 +12,6 @@ import (
 
 	model "github.com/DataDog/agent-payload/process"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
-	"github.com/DataDog/datadog-agent/pkg/process/util/orchestrator"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	jsoniter "github.com/json-iterator/go"
@@ -28,14 +27,6 @@ func processDeploymentList(deploymentList []*v1.Deployment, groupID int32, cfg *
 	for d := 0; d < len(deploymentList); d++ {
 		// extract deployment info
 		deployModel := extractDeployment(deploymentList[d])
-
-		// scrub & generate YAML
-		for c := 0; c < len(deploymentList[d].Spec.Template.Spec.InitContainers); c++ {
-			orchestrator.ScrubContainer(&deploymentList[d].Spec.Template.Spec.InitContainers[c], cfg)
-		}
-		for c := 0; c < len(deploymentList[d].Spec.Template.Spec.Containers); c++ {
-			orchestrator.ScrubContainer(&deploymentList[d].Spec.Template.Spec.Containers[c], cfg)
-		}
 
 		// k8s objects only have json "omitempty" annotations
 		// we're doing json<>yaml to get rid of the null properties
@@ -93,14 +84,6 @@ func processReplicaSetList(rsList []*v1.ReplicaSet, groupID int32, cfg *config.A
 	for rs := 0; rs < len(rsList); rs++ {
 		// extract replica set info
 		rsModel := extractReplicaSet(rsList[rs])
-
-		// scrub & generate YAML
-		for c := 0; c < len(rsList[rs].Spec.Template.Spec.InitContainers); c++ {
-			orchestrator.ScrubContainer(&rsList[rs].Spec.Template.Spec.InitContainers[c], cfg)
-		}
-		for c := 0; c < len(rsList[rs].Spec.Template.Spec.Containers); c++ {
-			orchestrator.ScrubContainer(&rsList[rs].Spec.Template.Spec.Containers[c], cfg)
-		}
 
 		// k8s objects only have json "omitempty" annotations
 		// we're doing json<>yaml to get rid of the null properties
