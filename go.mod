@@ -161,6 +161,7 @@ require (
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	gopkg.in/zorkian/go-datadog-api.v2 v2.29.0
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4
