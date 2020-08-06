@@ -161,7 +161,11 @@ func (o *Controller) Run(stopCh <-chan struct{}) {
 		o.processServices,
 	}
 
-	spreadProcessors(processors, 2*time.Second, 10*time.Second, stopCh)
+	go wait.Until(func() {
+		for _, f := range processors {
+			f()
+		}
+	}, 10*time.Second, stopCh)
 
 	<-stopCh
 
@@ -289,14 +293,4 @@ func encodePayload(m model.MessageBody) ([]byte, error) {
 			Encoding: model.MessageEncodingZstdPB,
 			Type:     msgType,
 		}, Body: m})
-}
-
-func spreadProcessors(processors []func(), spreadInterval, processorPeriod time.Duration, stopCh <-chan struct{}) {
-	for idx, p := range processors {
-		processor := p
-		time.AfterFunc(time.Duration(idx)*spreadInterval, func() {
-			go wait.Until(processor, processorPeriod, stopCh)
-		})
-	}
-
 }
