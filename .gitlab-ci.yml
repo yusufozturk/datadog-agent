@@ -1502,6 +1502,8 @@ deploy_deb_testing-a6:
     - <<: *if_not_version_6
       when: never
     - <<: *if_test_kitchen_deploy
+    - changes:
+        - omnibus/**/*
   stage: testkitchen_deploy
   needs: ["agent_deb-x64-a6"]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
@@ -1557,6 +1559,8 @@ deploy_rpm_testing-a6:
     - <<: *if_not_version_6
       when: never
     - <<: *if_test_kitchen_deploy
+    - changes:
+        - omnibus/**/*
   stage: testkitchen_deploy
   needs: ["agent_rpm-x64-a6"]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
@@ -1590,6 +1594,8 @@ deploy_suse_rpm_testing-a6:
     - <<: *if_not_version_6
       when: never
     - <<: *if_test_kitchen_deploy
+    - changes:
+        - omnibus/**/*
   stage: testkitchen_deploy
   needs: ["agent_suse-x64-a6"]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
@@ -1623,6 +1629,8 @@ deploy_windows_testing-a6:
     - <<: *if_not_version_6
       when: never
     - <<: *if_test_kitchen_deploy
+    - changes:
+        - omnibus/**/*
   stage: testkitchen_deploy
   needs: ["windows_msi_x64-a6"]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
@@ -1670,6 +1678,8 @@ deploy_windows_testing-a7:
     - <<: *if_not_version_6
       when: never
     - <<: *if_test_kitchen_deploy
+    - changes:
+        - omnibus/**/*
   <<: *kitchen_common
   variables:
     AGENT_MAJOR_VERSION: 6
@@ -2335,6 +2345,8 @@ testkitchen_cleanup_s3-a6:
   rules:
     - <<: *if_not_version_6
       when: never
+    - changes:
+        - omnibus/**/*
     - <<: *if_not_test_kitchen_deploy
       when: never
     - when: always
@@ -2363,6 +2375,8 @@ testkitchen_cleanup_s3-a7:
   rules:
     - <<: *if_test_kitchen_deploy
       when: always
+    - changes:
+        - omnibus/**/*
   stage: testkitchen_cleanup
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:$DATADOG_AGENT_BUILDERS
   tags: [ "runner:main", "size:large" ]
