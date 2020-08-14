@@ -348,8 +348,10 @@ func (o *Obfuscator) obfuscateSQL(span *pb.Span) {
 func (o *Obfuscator) ObfuscateSQLStringSafe(sqlString string) string {
 	result, err := o.ObfuscateSQLString(sqlString)
 	if err != nil {
-		log.Debugf("failed to obfuscate sql string '%s': %s", sqlString, err.Error())
-		return "datadog-agent failed to obfuscate sql string. enable agent debug logs for more info."
+		log.Debugf("Failed to obfuscate SQL string '%s': %s", sqlString, err.Error())
+		// instead of returning an empty string we explicitly return an error string here within the result in order
+		// to surface the problem clearly to the user
+		return "Datadog-agent failed to obfuscate SQL string. Enable agent debug logs for more info."
 	}
 	return result.Query
 }

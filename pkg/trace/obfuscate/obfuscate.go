@@ -73,7 +73,7 @@ func NewObfuscator(cfg *traceconfig.ObfuscationConfig) *Obfuscator {
 func NewSQLObfuscator() *Obfuscator {
 	var cfg traceconfig.ObfuscationConfig
 	if err := config.Datadog.UnmarshalKey("apm_config.obfuscation", &cfg); err != nil {
-		log.Errorf("failed to unmarshal apm_config.obfuscation: %s", err.Error())
+		log.Errorf("Failed to unmarshal apm_config.obfuscation: %s", err.Error())
 		cfg = traceconfig.ObfuscationConfig{}
 	}
 	if !cfg.SQLExecPlan.Enabled {
