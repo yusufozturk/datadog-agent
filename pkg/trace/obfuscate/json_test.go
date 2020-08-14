@@ -32,9 +32,8 @@ type xmlObfuscateTest struct {
 	DontNormalize   bool // this test contains invalid JSON
 	In              string
 	Out             string
-	TransformerType string
 	KeepValues      []string `xml:"KeepValues>key"`
-	TransformValues []string `xml:"TransformValues>key"`
+	ObfuscateSQLValues []string `xml:"ObfuscateSQLValues>key"`
 }
 
 // loadTests loads all XML tests from ./testdata/obfuscate.xml
@@ -104,8 +103,7 @@ func TestObfuscateJSON(t *testing.T) {
 			assert := assert.New(t)
 			cfg := &config.JSONObfuscationConfig{
 				KeepValues:      s.KeepValues,
-				TransformValues: s.TransformValues,
-				TransformerType: s.TransformerType,
+				ObfuscateSQLValues: s.ObfuscateSQLValues,
 			}
 			out, err := NewObfuscator(nil).newJSONObfuscator(cfg).obfuscate([]byte(s.In))
 			if !s.DontNormalize {

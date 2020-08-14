@@ -488,10 +488,9 @@
 		</Test>
 		<Test>
 			<Tag>obfuscate.sql.json.basic</Tag>
-			<TransformValues>
+			<ObfuscateSQLValues>
 				<key>query</key>
-			</TransformValues>
-			<TransformerType>obfuscate_sql</TransformerType>
+			</ObfuscateSQLValues>
 			<KeepValues>
 				<key>hello</key>
 			</KeepValues>
@@ -499,41 +498,26 @@
 			<Out>{"query": "select * from table where id = ?", "hello": "world", "hi": "?"}</Out>
 		</Test>
 		<Test>
-			<Tag>obfuscate.sql.json.invalid_transformer_type</Tag>
-			<TransformValues>
-				<key>query</key>
-			</TransformValues>
-			<TransformerType>fake_transformer</TransformerType>
-			<KeepValues>
-				<key>hello</key>
-			</KeepValues>
-			<In>{"query": "select * from table where id = 2", "hello": "world", "hi": "there"}</In>
-			<Out>{"query": "?", "hello": "world", "hi": "?"}</Out>
-		</Test>
-		<Test>
 			<Tag>obfuscate.sql.json.tried_sql_obfuscate_an_object</Tag>
-			<TransformValues>
+			<ObfuscateSQLValues>
 				<key>object</key>
-			</TransformValues>
-			<TransformerType>obfuscate_sql</TransformerType>
+			</ObfuscateSQLValues>
 			<In>{"object": {"not a": "query"}}</In>
 			<Out>{"object": {"not a": "?"}}</Out>
 		</Test>
 		<Test>
 			<Tag>obfuscate.sql.json.tried_sql_obfuscate_an_array</Tag>
-			<TransformValues>
+			<ObfuscateSQLValues>
 				<key>object</key>
-			</TransformValues>
-			<TransformerType>obfuscate_sql</TransformerType>
+			</ObfuscateSQLValues>
 			<In>{"object": ["not", "a", "query"]}</In>
 			<Out>{"object": ["?", "?", "?"]}</Out>
 		</Test>
 		<Test>
 			<Tag>normalize.sql.plan.mysql</Tag>
-			<TransformValues>
+			<ObfuscateSQLValues>
 				<key>attached_condition</key>
-			</TransformValues>
-			<TransformerType>obfuscate_sql</TransformerType>
+			</ObfuscateSQLValues>
 			<KeepValues>
 				<key>select_id</key>
 				<key>using_filesort</key>
@@ -632,14 +616,13 @@
 		</Test>
 		<Test>
 			<Tag>normalize.sql.plan.postgres</Tag>
-			<TransformValues>
+			<ObfuscateSQLValues>
 				<key>Index Cond</key>
 				<key>Recheck Cond</key>
 				<key>Merge Cond</key>
 				<key>Hash Cond</key>
 				<key>Join Filter</key>
-			</TransformValues>
-			<TransformerType>obfuscate_sql</TransformerType>
+			</ObfuscateSQLValues>
 			<KeepValues>
 				<key>Node Type</key>
 				<key>Parallel Aware</key>

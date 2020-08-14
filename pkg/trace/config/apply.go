@@ -78,12 +78,9 @@ type JSONObfuscationConfig struct {
 	// not be obfuscated.
 	KeepValues []string `mapstructure:"keep_values"`
 
-	// TransformValues will specify a set of keys for which their values will
-	// not be obfuscated.
-	TransformValues []string `mapstructure:"transform_values"`
-
-	// TransformerType is the type of transformer used to transform the TransformValues.
-	TransformerType string `mapstructure:"transformer_type"`
+	// ObfuscateSQLValues will specify a set of keys for which their values
+	// will be passed through SQL obfuscation
+	ObfuscateSQLValues []string `mapstructure:"obfuscate_sql_values"`
 }
 
 // ReplaceRule specifies a replace rule.

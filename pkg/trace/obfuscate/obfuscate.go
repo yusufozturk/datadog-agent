@@ -144,8 +144,7 @@ func compactWhitespaces(t string) string {
 // execution plans
 var defaultSQLPlanNormalizeSettings = traceconfig.JSONObfuscationConfig{
 	Enabled:         true,
-	TransformerType: "obfuscate_sql",
-	TransformValues: []string{
+	ObfuscateSQLValues: []string{
 		// mysql
 		"attached_condition",
 		// postgres
@@ -192,7 +191,6 @@ var defaultSQLPlanNormalizeSettings = traceconfig.JSONObfuscationConfig{
 // list
 var defaultSQLPlanObfuscateSettings = traceconfig.JSONObfuscationConfig{
 	Enabled:         true,
-	TransformerType: "obfuscate_sql",
 	KeepValues: append([]string{
 		// mysql
 		"cost_info",
@@ -206,5 +204,5 @@ var defaultSQLPlanObfuscateSettings = traceconfig.JSONObfuscationConfig{
 		"Startup Cost",
 		"Total Cost",
 	}, defaultSQLPlanNormalizeSettings.KeepValues...),
-	TransformValues: defaultSQLPlanNormalizeSettings.TransformValues,
+	ObfuscateSQLValues: defaultSQLPlanNormalizeSettings.ObfuscateSQLValues,
 }

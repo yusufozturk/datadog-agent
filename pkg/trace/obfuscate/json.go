@@ -11,7 +11,6 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // obfuscateJSON obfuscates the given span's tag using the given obfuscator. If the obfuscator is
@@ -27,12 +26,10 @@ func (o *Obfuscator) obfuscateJSON(span *pb.Span, tag string, obfuscator *jsonOb
 	// as much of it as we could. It is safe to accept the output, even if partial.
 }
 
-type valueTransformer func(string) string
-
 type jsonObfuscator struct {
 	keepKeys      map[string]bool // these keys will not be obfuscated
 	transformKeys map[string]bool // these keys pass through the transformer
-	transformer   valueTransformer
+	transformer   func(string) string
 
 	scan     *scanner // scanner
 	closures []bool   // closure stack, true if object (e.g. {[{ => []bool{true, false, true})
@@ -50,15 +47,11 @@ func (o *Obfuscator) newJSONObfuscator(cfg *config.JSONObfuscationConfig) *jsonO
 		keepValue[v] = true
 	}
 	var transformValues map[string]bool
-	var transformer valueTransformer
-	if cfg.TransformerType == "obfuscate_sql" {
+	var transformer func(string) string
+	if len(cfg.ObfuscateSQLValues) > 0 {
 		transformer = o.ObfuscateSQLStringSafe
-	} else {
-		log.Warnf("unknown JSON value transformer type %s", cfg.TransformerType)
-	}
-	if transformer != nil {
-		transformValues = make(map[string]bool, len(cfg.TransformValues))
-		for _, v := range cfg.TransformValues {
+		transformValues = make(map[string]bool, len(cfg.ObfuscateSQLValues))
+		for _, v := range cfg.ObfuscateSQLValues {
 			transformValues[v] = true
 		}
 	}
