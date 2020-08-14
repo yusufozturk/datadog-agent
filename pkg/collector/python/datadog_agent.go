@@ -201,7 +201,7 @@ var (
 // will definitely be initialized by the time one of the python checks runs
 func lazyInitObfuscator() *obfuscate.Obfuscator {
 	obfuscatorLoader.Do(func() {
-		obfuscator = obfuscate.LoadSQLObfuscator()
+		obfuscator = obfuscate.NewSQLObfuscator()
 	})
 	return obfuscator
 }

@@ -67,10 +67,10 @@ func NewObfuscator(cfg *traceconfig.ObfuscationConfig) *Obfuscator {
 	return &o
 }
 
-// LoadSQLObfuscator initializes the obfsucator from the standard agent config, setting defaults for SQLExecPlan
+// NewSQLObfuscator initializes the obfsucator from the standard agent config, setting defaults for SQLExecPlan
 // and SQLExecPlanNormalize if they are not set. Since this relies on config.Datadog it must be called after
 // config.Datadog has been initialized in order for config.Datadog to be used
-func LoadSQLObfuscator() *Obfuscator {
+func NewSQLObfuscator() *Obfuscator {
 	var cfg traceconfig.ObfuscationConfig
 	if err := config.Datadog.UnmarshalKey("apm_config.obfuscation", &cfg); err != nil {
 		log.Errorf("failed to unmarshal apm_config.obfuscation: %s", err.Error())
