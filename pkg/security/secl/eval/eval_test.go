@@ -7,6 +7,7 @@ package eval
 
 import (
 	"fmt"
+	"hash/crc32"
 	"strings"
 	"syscall"
 	"testing"
@@ -45,7 +46,7 @@ func eval(t *testing.T, event *testEvent, expr string) (bool, *ast.Rule, error) 
 	}
 	r1 := rule.Eval(ctx)
 
-	opts = NewOptsWithParams(true, testConstants)
+	/*opts = NewOptsWithParams(true, testConstants)
 	rule, err = parseRule(expr, model, opts)
 	if err != nil {
 		return false, rule.GetAst(), err
@@ -54,7 +55,7 @@ func eval(t *testing.T, event *testEvent, expr string) (bool, *ast.Rule, error) 
 
 	if r1 != r2 {
 		t.Fatalf("different result for non-debug and debug evalutators with rule `%s`", expr)
-	}
+	}*/
 
 	return r1, rule.GetAst(), nil
 }
@@ -350,6 +351,33 @@ func TestComplex(t *testing.T) {
 		Expected bool
 	}{
 		{Expr: `open.filename =~ "/var/lib/httpd/*" && open.flags & (O_CREAT | O_TRUNC | O_EXCL | O_RDWR | O_WRONLY) > 0`, Expected: true},
+	}
+
+	for _, test := range tests {
+		result, _, err := eval(t, event, test.Expr)
+		if err != nil {
+			t.Fatalf("error while evaluating `%s: %s`", test.Expr, err)
+		}
+
+		if result != test.Expected {
+			t.Errorf("expected result `%t` not found, got `%t`\n%s", test.Expected, result, test.Expr)
+		}
+	}
+}
+
+func TestOpOverload(t *testing.T) {
+	event := &testEvent{
+		unlink: testUnlink{
+			crc32: crc32.ChecksumIEEE([]byte("/var/lib/httpd/htpasswd")),
+		},
+	}
+
+	tests := []struct {
+		Expr     string
+		Expected bool
+	}{
+		{Expr: `unlink.filename == "/var/lib/httpd/htpasswd"`, Expected: true},
+		{Expr: `unlink.filename == "/var/log/test.log"`, Expected: false},
 	}
 
 	for _, test := range tests {

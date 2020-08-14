@@ -62,11 +62,16 @@ type Evaluator interface {
 	Eval(ctx *Context) interface{}
 }
 
+type BoolOpOverload interface {
+	BoolOpOverloadBase
+}
+
 // BoolEvaluator returns a bool as result of the evaluation
 type BoolEvaluator struct {
-	EvalFnc func(ctx *Context) bool
-	Field   Field
-	Value   bool
+	EvalFnc    func(ctx *Context) bool
+	OpOverload BoolOpOverload
+	Field      Field
+	Value      bool
 
 	isPartial bool
 }
@@ -76,11 +81,17 @@ func (b *BoolEvaluator) Eval(ctx *Context) interface{} {
 	return b.EvalFnc(nil)
 }
 
+type IntOpOverload interface {
+	IntOpOverloadBase
+	IntArrayContains(ctx *Context, value []int) bool
+}
+
 // IntEvaluator returns an int as result of the evaluation
 type IntEvaluator struct {
-	EvalFnc func(ctx *Context) int
-	Field   Field
-	Value   int
+	EvalFnc    func(ctx *Context) int
+	OpOverload IntOpOverload
+	Field      Field
+	Value      int
 
 	isPartial bool
 }
@@ -90,11 +101,18 @@ func (i *IntEvaluator) Eval(ctx *Context) interface{} {
 	return i.EvalFnc(ctx)
 }
 
+type StringOpOverload interface {
+	StringOpOverloadBase
+	StringMatches(ctx *Context, value string) bool
+	StringArrayContains(ctx *Context, value []string) bool
+}
+
 // StringEvaluator returns a string as result of the evaluation
 type StringEvaluator struct {
-	EvalFnc func(ctx *Context) string
-	Field   Field
-	Value   string
+	EvalFnc    func(ctx *Context) string
+	OpOverload StringOpOverload
+	Field      Field
+	Value      string
 
 	isPartial bool
 }

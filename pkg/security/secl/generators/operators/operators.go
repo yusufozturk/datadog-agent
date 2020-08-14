@@ -23,9 +23,33 @@ func main() {
 
 package	eval
 
+type StringOpOverloadBase interface {
+{{ range . }}
+	{{ if and (eq .ArgsType "StringEvaluator") .Overloadable }}
+	{{ .FuncName }}(ctx *Context, value string) {{ .EvalReturnType }}
+	{{ end }}
+{{ end }}
+}
+
+type IntOpOverloadBase interface {
+{{ range . }}
+	{{ if and (eq .ArgsType "IntEvaluator") .Overloadable }}
+	{{ .FuncName }}(ctx *Context, value int) {{ .EvalReturnType }}
+	{{ end }}
+{{ end }}
+}
+
+type BoolOpOverloadBase interface {
+{{ range . }}
+	{{ if and (eq .ArgsType "BoolEvaluator") .Overloadable }}
+	{{ .FuncName }}(ctx *Context, value bool) {{ .EvalReturnType }}
+	{{ end }}
+{{ end }}
+}
+
 {{ range . }}
 
-func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *state) (*{{ .FuncReturnType }}, error) {
+func {{ .FuncName }}(a *{{ .ArgsType }}, b *{{ .ArgsType }}, opts *Opts, state *state) (*{{ .FuncReturnType }}, error) {
 	partialA, partialB := a.isPartial, b.isPartial
 
 	if a.EvalFnc == nil || (a.Field != "" && a.Field != state.field) {
@@ -40,7 +64,7 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		{{ if or (eq .FuncName "Or") (eq .FuncName "And") }}
@@ -69,9 +93,23 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-				return ea(ctx) {{ .Op }} eb(ctx)
-			}
+			{{ if .Overloadable }}
+				if a.OpOverload != nil {
+					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+						return a.OpOverload.{{ .FuncName }}(ctx, eb(ctx))
+					}
+				} else if b.OpOverload != nil {
+					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+						return b.OpOverload.{{ .FuncName }}(ctx, ea(ctx))
+					}
+				} else {
+			{{ end }}
+					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+						return ea(ctx) {{ .Op }} eb(ctx)
+					}
+			{{ if .Overloadable }}
+				}
+			{{ end }}	
 		}
 
 		return &{{ .FuncReturnType }}{
@@ -80,7 +118,7 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		{{ if or (eq .FuncName "Or") (eq .FuncName "And") }}
@@ -100,7 +138,7 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -133,9 +171,19 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-				return ea(ctx) {{ .Op }} eb
-			}
+			{{ if .Overloadable }} 
+				if a.OpOverload != nil {
+					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+						return a.OpOverload.{{ .FuncName }}(ctx, eb)
+					}
+				} else {
+			{{ end }}
+					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+						return ea(ctx) {{ .Op }} eb
+					}
+			{{ if .Overloadable }}
+				}
+			{{ end }}	
 		}
 
 		return &{{ .FuncReturnType }}{
@@ -176,9 +224,19 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-			return ea {{ .Op }} eb(ctx)
-		}
+		{{ if .Overloadable }} 
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+					return b.OpOverload.{{ .FuncName }}(ctx, ea)
+				}
+			} else {
+		{{ end }}	
+				evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+					return ea {{ .Op }} eb(ctx)
+				}
+		{{ if .Overloadable }}
+			}
+		{{ end }}	
 	}
 
 	return &{{ .FuncReturnType }}{
@@ -196,17 +254,16 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 
 	operators := []struct {
 		FuncName       string
-		Arg1Type       string
-		Arg2Type       string
+		ArgsType       string
 		FuncReturnType string
 		EvalReturnType string
 		Op             string
 		ValueType      string
+		Overloadable   bool
 	}{
 		{
 			FuncName:       "Or",
-			Arg1Type:       "BoolEvaluator",
-			Arg2Type:       "BoolEvaluator",
+			ArgsType:       "BoolEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "||",
@@ -214,8 +271,7 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 		},
 		{
 			FuncName:       "And",
-			Arg1Type:       "BoolEvaluator",
-			Arg2Type:       "BoolEvaluator",
+			ArgsType:       "BoolEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "&&",
@@ -223,120 +279,120 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 		},
 		{
 			FuncName:       "IntEquals",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "==",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "IntNotEquals",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "!=",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "IntAnd",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "IntEvaluator",
 			EvalReturnType: "int",
 			Op:             "&",
 			ValueType:      "BitmaskValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "IntOr",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "IntEvaluator",
 			EvalReturnType: "int",
 			Op:             "|",
 			ValueType:      "BitmaskValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "IntXor",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "IntEvaluator",
 			EvalReturnType: "int",
 			Op:             "^",
 			ValueType:      "BitmaskValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "StringEquals",
-			Arg1Type:       "StringEvaluator",
-			Arg2Type:       "StringEvaluator",
+			ArgsType:       "StringEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "==",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "StringNotEquals",
-			Arg1Type:       "StringEvaluator",
-			Arg2Type:       "StringEvaluator",
+			ArgsType:       "StringEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "!=",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "BoolEquals",
-			Arg1Type:       "BoolEvaluator",
-			Arg2Type:       "BoolEvaluator",
+			ArgsType:       "BoolEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "==",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "BoolNotEquals",
-			Arg1Type:       "BoolEvaluator",
-			Arg2Type:       "BoolEvaluator",
+			ArgsType:       "BoolEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "!=",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "GreaterThan",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             ">",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "GreaterOrEqualThan",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             ">=",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "LesserThan",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "<",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 		{
 			FuncName:       "LesserOrEqualThan",
-			Arg1Type:       "IntEvaluator",
-			Arg2Type:       "IntEvaluator",
+			ArgsType:       "IntEvaluator",
 			FuncReturnType: "BoolEvaluator",
 			EvalReturnType: "bool",
 			Op:             "<=",
 			ValueType:      "ScalarValueType",
+			Overloadable:   true,
 		},
 	}
 

@@ -2,6 +2,38 @@
 
 package eval
 
+type StringOpOverloadBase interface {
+	StringEquals(ctx *Context, value string) bool
+
+	StringNotEquals(ctx *Context, value string) bool
+}
+
+type IntOpOverloadBase interface {
+	IntEquals(ctx *Context, value int) bool
+
+	IntNotEquals(ctx *Context, value int) bool
+
+	IntAnd(ctx *Context, value int) int
+
+	IntOr(ctx *Context, value int) int
+
+	IntXor(ctx *Context, value int) int
+
+	GreaterThan(ctx *Context, value int) bool
+
+	GreaterOrEqualThan(ctx *Context, value int) bool
+
+	LesserThan(ctx *Context, value int) bool
+
+	LesserOrEqualThan(ctx *Context, value int) bool
+}
+
+type BoolOpOverloadBase interface {
+	BoolEquals(ctx *Context, value bool) bool
+
+	BoolNotEquals(ctx *Context, value bool) bool
+}
+
 func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEvaluator, error) {
 	partialA, partialB := a.isPartial, b.isPartial
 
@@ -17,7 +49,7 @@ func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEval
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		if state.field != "" {
@@ -44,9 +76,11 @@ func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEval
 				return result
 			}
 		} else {
+
 			evalFnc = func(ctx *Context) bool {
 				return ea(ctx) || eb(ctx)
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -55,7 +89,7 @@ func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEval
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		if state.field != "" {
@@ -73,7 +107,7 @@ func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEval
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -104,9 +138,11 @@ func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEval
 				return result
 			}
 		} else {
+
 			evalFnc = func(ctx *Context) bool {
 				return ea(ctx) || eb
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -145,9 +181,11 @@ func Or(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEval
 			return result
 		}
 	} else {
+
 		evalFnc = func(ctx *Context) bool {
 			return ea || eb(ctx)
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -171,7 +209,7 @@ func And(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEva
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		if state.field != "" {
@@ -198,9 +236,11 @@ func And(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEva
 				return result
 			}
 		} else {
+
 			evalFnc = func(ctx *Context) bool {
 				return ea(ctx) && eb(ctx)
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -209,7 +249,7 @@ func And(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEva
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		if state.field != "" {
@@ -227,7 +267,7 @@ func And(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEva
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -258,9 +298,11 @@ func And(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEva
 				return result
 			}
 		} else {
+
 			evalFnc = func(ctx *Context) bool {
 				return ea(ctx) && eb
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -299,9 +341,11 @@ func And(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*BoolEva
 			return result
 		}
 	} else {
+
 		evalFnc = func(ctx *Context) bool {
 			return ea && eb(ctx)
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -325,7 +369,7 @@ func IntEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Boo
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -339,9 +383,23 @@ func IntEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Boo
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) == eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.IntEquals(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.IntEquals(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) == eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -350,7 +408,7 @@ func IntEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Boo
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -359,7 +417,7 @@ func IntEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Boo
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -379,9 +437,19 @@ func IntEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Boo
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) == eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.IntEquals(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) == eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -409,9 +477,19 @@ func IntEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Boo
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea == eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.IntEquals(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea == eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -435,7 +513,7 @@ func IntNotEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -449,9 +527,23 @@ func IntNotEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) != eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.IntNotEquals(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.IntNotEquals(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) != eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -460,7 +552,7 @@ func IntNotEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -469,7 +561,7 @@ func IntNotEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -489,9 +581,19 @@ func IntNotEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) != eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.IntNotEquals(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) != eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -519,9 +621,19 @@ func IntNotEquals(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea != eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.IntNotEquals(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea != eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -545,7 +657,7 @@ func IntAnd(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) int
@@ -559,9 +671,23 @@ func IntAnd(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) int {
-				return ea(ctx) & eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return a.OpOverload.IntAnd(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return b.OpOverload.IntAnd(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) int {
+					return ea(ctx) & eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &IntEvaluator{
@@ -570,7 +696,7 @@ func IntAnd(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &IntEvaluator{
@@ -579,7 +705,7 @@ func IntAnd(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -599,9 +725,19 @@ func IntAnd(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) int {
-				return ea(ctx) & eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return a.OpOverload.IntAnd(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) int {
+					return ea(ctx) & eb
+				}
+
 			}
+
 		}
 
 		return &IntEvaluator{
@@ -629,9 +765,19 @@ func IntAnd(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) int {
-			return ea & eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) int {
+				return b.OpOverload.IntAnd(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) int {
+				return ea & eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &IntEvaluator{
@@ -655,7 +801,7 @@ func IntOr(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEval
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) int
@@ -669,9 +815,23 @@ func IntOr(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEval
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) int {
-				return ea(ctx) | eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return a.OpOverload.IntOr(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return b.OpOverload.IntOr(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) int {
+					return ea(ctx) | eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &IntEvaluator{
@@ -680,7 +840,7 @@ func IntOr(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEval
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &IntEvaluator{
@@ -689,7 +849,7 @@ func IntOr(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEval
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -709,9 +869,19 @@ func IntOr(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEval
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) int {
-				return ea(ctx) | eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return a.OpOverload.IntOr(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) int {
+					return ea(ctx) | eb
+				}
+
 			}
+
 		}
 
 		return &IntEvaluator{
@@ -739,9 +909,19 @@ func IntOr(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEval
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) int {
-			return ea | eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) int {
+				return b.OpOverload.IntOr(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) int {
+				return ea | eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &IntEvaluator{
@@ -765,7 +945,7 @@ func IntXor(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) int
@@ -779,9 +959,23 @@ func IntXor(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) int {
-				return ea(ctx) ^ eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return a.OpOverload.IntXor(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return b.OpOverload.IntXor(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) int {
+					return ea(ctx) ^ eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &IntEvaluator{
@@ -790,7 +984,7 @@ func IntXor(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &IntEvaluator{
@@ -799,7 +993,7 @@ func IntXor(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -819,9 +1013,19 @@ func IntXor(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) int {
-				return ea(ctx) ^ eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) int {
+					return a.OpOverload.IntXor(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) int {
+					return ea(ctx) ^ eb
+				}
+
 			}
+
 		}
 
 		return &IntEvaluator{
@@ -849,9 +1053,19 @@ func IntXor(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*IntEva
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) int {
-			return ea ^ eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) int {
+				return b.OpOverload.IntXor(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) int {
+				return ea ^ eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &IntEvaluator{
@@ -875,7 +1089,7 @@ func StringEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *sta
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -889,9 +1103,23 @@ func StringEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *sta
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) == eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.StringEquals(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.StringEquals(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) == eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -900,7 +1128,7 @@ func StringEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *sta
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -909,7 +1137,7 @@ func StringEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *sta
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -929,9 +1157,19 @@ func StringEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *sta
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) == eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.StringEquals(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) == eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -959,9 +1197,19 @@ func StringEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *sta
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea == eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.StringEquals(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea == eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -985,7 +1233,7 @@ func StringNotEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -999,9 +1247,23 @@ func StringNotEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) != eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.StringNotEquals(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.StringNotEquals(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) != eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1010,7 +1272,7 @@ func StringNotEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1019,7 +1281,7 @@ func StringNotEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1039,9 +1301,19 @@ func StringNotEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) != eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.StringNotEquals(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) != eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1069,9 +1341,19 @@ func StringNotEquals(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea != eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.StringNotEquals(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea != eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -1095,7 +1377,7 @@ func BoolEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -1109,9 +1391,23 @@ func BoolEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) == eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.BoolEquals(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.BoolEquals(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) == eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1120,7 +1416,7 @@ func BoolEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1129,7 +1425,7 @@ func BoolEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1149,9 +1445,19 @@ func BoolEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) == eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.BoolEquals(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) == eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1179,9 +1485,19 @@ func BoolEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state) (*
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea == eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.BoolEquals(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea == eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -1205,7 +1521,7 @@ func BoolNotEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state)
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -1219,9 +1535,23 @@ func BoolNotEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state)
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) != eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.BoolNotEquals(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.BoolNotEquals(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) != eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1230,7 +1560,7 @@ func BoolNotEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state)
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1239,7 +1569,7 @@ func BoolNotEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state)
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1259,9 +1589,19 @@ func BoolNotEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state)
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) != eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.BoolNotEquals(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) != eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1289,9 +1629,19 @@ func BoolNotEquals(a *BoolEvaluator, b *BoolEvaluator, opts *Opts, state *state)
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea != eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.BoolNotEquals(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea != eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -1315,7 +1665,7 @@ func GreaterThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*B
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -1329,9 +1679,23 @@ func GreaterThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*B
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) > eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.GreaterThan(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.GreaterThan(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) > eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1340,7 +1704,7 @@ func GreaterThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*B
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1349,7 +1713,7 @@ func GreaterThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*B
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1369,9 +1733,19 @@ func GreaterThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*B
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) > eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.GreaterThan(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) > eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1399,9 +1773,19 @@ func GreaterThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*B
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea > eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.GreaterThan(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea > eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -1425,7 +1809,7 @@ func GreaterOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *sta
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -1439,9 +1823,23 @@ func GreaterOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *sta
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) >= eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.GreaterOrEqualThan(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.GreaterOrEqualThan(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) >= eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1450,7 +1848,7 @@ func GreaterOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *sta
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1459,7 +1857,7 @@ func GreaterOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *sta
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1479,9 +1877,19 @@ func GreaterOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *sta
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) >= eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.GreaterOrEqualThan(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) >= eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1509,9 +1917,19 @@ func GreaterOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *sta
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea >= eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.GreaterOrEqualThan(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea >= eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -1535,7 +1953,7 @@ func LesserThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Bo
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -1549,9 +1967,23 @@ func LesserThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Bo
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) < eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.LesserThan(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.LesserThan(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) < eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1560,7 +1992,7 @@ func LesserThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Bo
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1569,7 +2001,7 @@ func LesserThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Bo
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1589,9 +2021,19 @@ func LesserThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Bo
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) < eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.LesserThan(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) < eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1619,9 +2061,19 @@ func LesserThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *state) (*Bo
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea < eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.LesserThan(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea < eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{
@@ -1645,7 +2097,7 @@ func LesserOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *stat
 		isPartialLeaf = true
 	}
 
-	if a.EvalFnc != nil && b.EvalFnc != nil {
+	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		var evalFnc func(ctx *Context) bool
@@ -1659,9 +2111,23 @@ func LesserOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *stat
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) <= eb(ctx)
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.LesserOrEqualThan(ctx, eb(ctx))
+				}
+			} else if b.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return b.OpOverload.LesserOrEqualThan(ctx, ea(ctx))
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) <= eb(ctx)
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1670,7 +2136,7 @@ func LesserOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *stat
 		}, nil
 	}
 
-	if a.EvalFnc == nil && b.EvalFnc == nil {
+	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
 		ea, eb := a.Value, b.Value
 
 		return &BoolEvaluator{
@@ -1679,7 +2145,7 @@ func LesserOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *stat
 		}, nil
 	}
 
-	if a.EvalFnc != nil {
+	if a.EvalFnc != nil || a.OpOverload != nil {
 		ea, eb := a.EvalFnc, b.Value
 
 		if a.Field != "" {
@@ -1699,9 +2165,19 @@ func LesserOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *stat
 				return result
 			}
 		} else {
-			evalFnc = func(ctx *Context) bool {
-				return ea(ctx) <= eb
+
+			if a.OpOverload != nil {
+				evalFnc = func(ctx *Context) bool {
+					return a.OpOverload.LesserOrEqualThan(ctx, eb)
+				}
+			} else {
+
+				evalFnc = func(ctx *Context) bool {
+					return ea(ctx) <= eb
+				}
+
 			}
+
 		}
 
 		return &BoolEvaluator{
@@ -1729,9 +2205,19 @@ func LesserOrEqualThan(a *IntEvaluator, b *IntEvaluator, opts *Opts, state *stat
 			return result
 		}
 	} else {
-		evalFnc = func(ctx *Context) bool {
-			return ea <= eb(ctx)
+
+		if a.OpOverload != nil {
+			evalFnc = func(ctx *Context) bool {
+				return b.OpOverload.LesserOrEqualThan(ctx, ea)
+			}
+		} else {
+
+			evalFnc = func(ctx *Context) bool {
+				return ea <= eb(ctx)
+			}
+
 		}
+
 	}
 
 	return &BoolEvaluator{

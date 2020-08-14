@@ -6,6 +6,7 @@
 package eval
 
 import (
+	"hash/crc32"
 	"reflect"
 	"syscall"
 	"unsafe"
@@ -31,6 +32,11 @@ type testMkdir struct {
 	mode     int
 }
 
+type testUnlink struct {
+	filename string
+	crc32    uint32
+}
+
 type testEvent struct {
 	id   string
 	kind string
@@ -38,6 +44,26 @@ type testEvent struct {
 	process testProcess
 	open    testOpen
 	mkdir   testMkdir
+	unlink  testUnlink
+}
+
+type testUnlinkOpOverload struct {
+}
+
+func (o *testUnlinkOpOverload) StringArrayContains(ctx *Context, value []string) bool {
+	return false
+}
+
+func (o *testUnlinkOpOverload) StringEquals(ctx *Context, value string) bool {
+	return (*testEvent)(ctx.Object).unlink.crc32 == crc32.ChecksumIEEE([]byte(value))
+}
+
+func (o *testUnlinkOpOverload) StringNotEquals(ctx *Context, value string) bool {
+	return !o.StringEquals(ctx, value)
+}
+
+func (o *testUnlinkOpOverload) StringMatches(ctx *Context, value string) bool {
+	return false
 }
 
 type testModel struct {
@@ -126,6 +152,13 @@ func (m *testModel) GetEvaluator(key string) (Evaluator, error) {
 			Field:   key,
 		}, nil
 
+	case "unlink.filename":
+
+		return &StringEvaluator{
+			OpOverload: &testUnlinkOpOverload{},
+			Field:      key,
+		}, nil
+
 	case "mkdir.filename":
 
 		return &StringEvaluator{
@@ -176,6 +209,10 @@ func (e *testEvent) GetFieldValue(key string) (interface{}, error) {
 
 		return e.open.mode, nil
 
+	case "unlink.filename":
+
+		return e.unlink.filename, nil
+
 	case "mkdir.filename":
 
 		return e.mkdir.filename, nil
@@ -219,6 +256,10 @@ func (e *testEvent) GetFieldEventType(key string) (string, error) {
 	case "open.mode":
 
 		return "open", nil
+
+	case "unlink.filename":
+
+		return "unlink", nil
 
 	case "mkdir.filename":
 
@@ -271,6 +312,12 @@ func (e *testEvent) SetFieldValue(key string, value interface{}) error {
 		e.open.mode = value.(int)
 		return nil
 
+	case "unlink.filename":
+
+		e.unlink.filename = value.(string)
+		e.unlink.crc32 = crc32.ChecksumIEEE([]byte(e.unlink.filename))
+		return nil
+
 	case "mkdir.filename":
 
 		e.mkdir.filename = value.(string)
@@ -316,6 +363,10 @@ func (e *testEvent) GetFieldType(key string) (reflect.Kind, error) {
 	case "open.mode":
 
 		return reflect.Int, nil
+
+	case "unlink.filename":
+
+		return reflect.String, nil
 
 	case "mkdir.filename":
 
