@@ -50,20 +50,21 @@ type testEvent struct {
 type testUnlinkOpOverload struct {
 }
 
-func (o *testUnlinkOpOverload) StringArrayContains(ctx *Context, value []string) bool {
-	return false
+func (o *testUnlinkOpOverload) StringArrayContains(ctx *Context, value []string) (bool, error) {
+	return false, ErrOpOverloadNotSupported
 }
 
-func (o *testUnlinkOpOverload) StringEquals(ctx *Context, value string) bool {
-	return (*testEvent)(ctx.Object).unlink.crc32 == crc32.ChecksumIEEE([]byte(value))
+func (o *testUnlinkOpOverload) StringEquals(ctx *Context, value string) (bool, error) {
+	return (*testEvent)(ctx.Object).unlink.crc32 == crc32.ChecksumIEEE([]byte(value)), nil
 }
 
-func (o *testUnlinkOpOverload) StringNotEquals(ctx *Context, value string) bool {
-	return !o.StringEquals(ctx, value)
+func (o *testUnlinkOpOverload) StringNotEquals(ctx *Context, value string) (bool, error) {
+	result, _ := o.StringEquals(ctx, value)
+	return !result, nil
 }
 
-func (o *testUnlinkOpOverload) StringMatches(ctx *Context, value string) bool {
-	return false
+func (o *testUnlinkOpOverload) StringMatches(ctx *Context, value string) (bool, error) {
+	return false, ErrOpOverloadNotSupported
 }
 
 type testModel struct {
@@ -155,6 +156,7 @@ func (m *testModel) GetEvaluator(key string) (Evaluator, error) {
 	case "unlink.filename":
 
 		return &StringEvaluator{
+			EvalFnc:    func(ctx *Context) string { return (*testEvent)(ctx.Object).unlink.filename },
 			OpOverload: &testUnlinkOpOverload{},
 			Field:      key,
 		}, nil

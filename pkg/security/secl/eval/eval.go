@@ -83,7 +83,7 @@ func (b *BoolEvaluator) Eval(ctx *Context) interface{} {
 
 type IntOpOverload interface {
 	IntOpOverloadBase
-	IntArrayContains(ctx *Context, value []int) bool
+	IntArrayContains(ctx *Context, value []int) (bool, error)
 }
 
 // IntEvaluator returns an int as result of the evaluation
@@ -103,8 +103,8 @@ func (i *IntEvaluator) Eval(ctx *Context) interface{} {
 
 type StringOpOverload interface {
 	StringOpOverloadBase
-	StringMatches(ctx *Context, value string) bool
-	StringArrayContains(ctx *Context, value []string) bool
+	StringMatches(ctx *Context, value string) (bool, error)
+	StringArrayContains(ctx *Context, value []string) (bool, error)
 }
 
 // StringEvaluator returns a string as result of the evaluation

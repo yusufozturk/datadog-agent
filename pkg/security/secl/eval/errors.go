@@ -11,7 +11,11 @@ import (
 	"strings"
 
 	"github.com/alecthomas/participle/lexer"
+	"github.com/pkg/errors"
 )
+
+// ErrOpOverloadNotSupported returned when the operator overload is not supported
+var ErrOpOverloadNotSupported = errors.New("operator overload not supported")
 
 // ErrInvalidPattern is returned for an invalid regular expression
 type ErrInvalidPattern struct {

@@ -129,7 +129,7 @@ type FileEvent struct {
 	MountID         uint32 `field:"-"`
 	Inode           uint64 `field:"inode"`
 	OverlayNumLower int32  `field:"overlay_numlower"`
-	PathnameStr     string `field:"filename" handler:"ResolveInode,string"`
+	PathnameStr     string `field:"filename" handler:"ResolveInode,string" opoverload:"NewPathnameOpOverload"`
 	ContainerPath   string `field:"container_path" handler:"ResolveContainerPath,string"`
 	BasenameStr     string `field:"basename" handler:"ResolveBasename,string"`
 }

@@ -343,6 +343,7 @@ func (m *Model) GetEvaluator(field eval.Field) (eval.Evaluator, error) {
 			EvalFnc: func(ctx *eval.Context) string {
 				return (*Event)(ctx.Object).Open.ResolveInode((*Event)(ctx.Object).resolvers)
 			},
+			OpOverload: NewPathnameOpOverload(field),
 
 			Field: field,
 		}, nil

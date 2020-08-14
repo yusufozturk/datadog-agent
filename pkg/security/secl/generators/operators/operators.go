@@ -26,7 +26,7 @@ package	eval
 type StringOpOverloadBase interface {
 {{ range . }}
 	{{ if and (eq .ArgsType "StringEvaluator") .Overloadable }}
-	{{ .FuncName }}(ctx *Context, value string) {{ .EvalReturnType }}
+	{{ .FuncName }}(ctx *Context, value string) ({{ .EvalReturnType }}, error)
 	{{ end }}
 {{ end }}
 }
@@ -34,7 +34,7 @@ type StringOpOverloadBase interface {
 type IntOpOverloadBase interface {
 {{ range . }}
 	{{ if and (eq .ArgsType "IntEvaluator") .Overloadable }}
-	{{ .FuncName }}(ctx *Context, value int) {{ .EvalReturnType }}
+	{{ .FuncName }}(ctx *Context, value int) ({{ .EvalReturnType }}, error)
 	{{ end }}
 {{ end }}
 }
@@ -42,7 +42,7 @@ type IntOpOverloadBase interface {
 type BoolOpOverloadBase interface {
 {{ range . }}
 	{{ if and (eq .ArgsType "BoolEvaluator") .Overloadable }}
-	{{ .FuncName }}(ctx *Context, value bool) {{ .EvalReturnType }}
+	{{ .FuncName }}(ctx *Context, value bool) ({{ .EvalReturnType }}, error)
 	{{ end }}
 {{ end }}
 }
@@ -64,7 +64,7 @@ func {{ .FuncName }}(a *{{ .ArgsType }}, b *{{ .ArgsType }}, opts *Opts, state *
 		isPartialLeaf = true
 	}
 
-	if (a.EvalFnc != nil || a.OpOverload != nil) && (b.EvalFnc != nil || b.OpOverload != nil) {
+	if a.EvalFnc != nil && b.EvalFnc != nil {
 		ea, eb := a.EvalFnc, b.EvalFnc
 
 		{{ if or (eq .FuncName "Or") (eq .FuncName "And") }}
@@ -93,21 +93,26 @@ func {{ .FuncName }}(a *{{ .ArgsType }}, b *{{ .ArgsType }}, opts *Opts, state *
 				return result
 			}
 		} else {
+			evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+				return ea(ctx) {{ .Op }} eb(ctx)
+			}
 			{{ if .Overloadable }}
 				if a.OpOverload != nil {
 					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-						return a.OpOverload.{{ .FuncName }}(ctx, eb(ctx))
+						result, err := a.OpOverload.{{ .FuncName }}(ctx, eb(ctx))
+						if err != nil {
+							return evalFnc(ctx)
+						} 
+						return result
 					}
 				} else if b.OpOverload != nil {
 					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-						return b.OpOverload.{{ .FuncName }}(ctx, ea(ctx))
+						result, err := b.OpOverload.{{ .FuncName }}(ctx, ea(ctx))
+						if err != nil {
+							return evalFnc(ctx)
+						}
+						return result
 					}
-				} else {
-			{{ end }}
-					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-						return ea(ctx) {{ .Op }} eb(ctx)
-					}
-			{{ if .Overloadable }}
 				}
 			{{ end }}	
 		}
@@ -118,7 +123,7 @@ func {{ .FuncName }}(a *{{ .ArgsType }}, b *{{ .ArgsType }}, opts *Opts, state *
 		}, nil
 	}
 
-	if a.EvalFnc == nil && a.OpOverload == nil && b.EvalFnc == nil && b.OpOverload == nil {
+	if a.EvalFnc == nil && b.EvalFnc == nil {
 		ea, eb := a.Value, b.Value
 
 		{{ if or (eq .FuncName "Or") (eq .FuncName "And") }}
@@ -171,19 +176,20 @@ func {{ .FuncName }}(a *{{ .ArgsType }}, b *{{ .ArgsType }}, opts *Opts, state *
 				return result
 			}
 		} else {
+			evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+				return ea(ctx) {{ .Op }} eb
+			}
 			{{ if .Overloadable }} 
 				if a.OpOverload != nil {
 					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-						return a.OpOverload.{{ .FuncName }}(ctx, eb)
+						result, err := a.OpOverload.{{ .FuncName }}(ctx, eb)
+						if err != nil {
+							return evalFnc(ctx)
+						}
+						return result
 					}
-				} else {
-			{{ end }}
-					evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-						return ea(ctx) {{ .Op }} eb
-					}
-			{{ if .Overloadable }}
 				}
-			{{ end }}	
+			{{ end }}
 		}
 
 		return &{{ .FuncReturnType }}{
@@ -224,19 +230,20 @@ func {{ .FuncName }}(a *{{ .ArgsType }}, b *{{ .ArgsType }}, opts *Opts, state *
 			return result
 		}
 	} else {
+		evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
+			return ea {{ .Op }} eb(ctx)
+		}
 		{{ if .Overloadable }} 
 			if a.OpOverload != nil {
 				evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-					return b.OpOverload.{{ .FuncName }}(ctx, ea)
+					result, err := b.OpOverload.{{ .FuncName }}(ctx, ea)
+					if err != nil {
+						return evalFnc(ctx)
+					}
+					return result
 				}
-			} else {
-		{{ end }}	
-				evalFnc = func(ctx *Context) {{ .EvalReturnType }} {
-					return ea {{ .Op }} eb(ctx)
-				}
-		{{ if .Overloadable }}
 			}
-		{{ end }}	
+		{{ end }}
 	}
 
 	return &{{ .FuncReturnType }}{
