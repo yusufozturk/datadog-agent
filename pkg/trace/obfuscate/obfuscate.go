@@ -143,7 +143,7 @@ func compactWhitespaces(t string) string {
 // defaultSQLPlanNormalizeSettings are the default JSON obfuscator settings for both obfuscating and normalizing SQL
 // execution plans
 var defaultSQLPlanNormalizeSettings = traceconfig.JSONObfuscationConfig{
-	Enabled:         true,
+	Enabled: true,
 	ObfuscateSQLValues: []string{
 		// mysql
 		"attached_condition",
@@ -190,7 +190,7 @@ var defaultSQLPlanNormalizeSettings = traceconfig.JSONObfuscationConfig{
 // defaultSQLPlanObfuscateSettings builds upon sqlPlanNormalizeSettings by including cost & row estimates in the keep
 // list
 var defaultSQLPlanObfuscateSettings = traceconfig.JSONObfuscationConfig{
-	Enabled:         true,
+	Enabled: true,
 	KeepValues: append([]string{
 		// mysql
 		"cost_info",

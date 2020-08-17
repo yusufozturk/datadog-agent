@@ -48,7 +48,7 @@ func (o *Obfuscator) newJSONObfuscator(cfg *config.JSONObfuscationConfig) *jsonO
 	}
 	var (
 		transformValues map[string]bool
-		transformer func(string) string
+		transformer     func(string) string
 	)
 	if len(cfg.ObfuscateSQLValues) > 0 {
 		transformer = o.ObfuscateSQLStringSafe
