@@ -114,9 +114,9 @@ func (p *jsonObfuscator) obfuscate(data []byte) (string, error) {
 					v = string(valBuf)
 				}
 				result := p.transformer(v)
-				out.Write([]byte(`"`))
-				out.Write([]byte(result))
-				out.Write([]byte(`"`))
+				out.WriteByte('"')
+				out.WriteString(result)
+				out.WriteByte('"')
 				p.transformingValue = false
 				valBuf = valBuf[:0]
 			} else if p.keeping && depth < p.keepDepth {
