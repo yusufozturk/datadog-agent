@@ -39,7 +39,7 @@ func (l *Loader) Register(cfg *config.AgentConfig, httpMux *http.ServeMux, facto
 		}
 
 		// Track if there is an Unsupported error
-		if strings.HasPrefix(err.Error(), modules.ErrSysprobeUnsupported.Error()) {
+		if err != nil && strings.HasPrefix(err.Error(), modules.ErrSysprobeUnsupported.Error()) {
 			unsupported = true
 			unsupportedErr = err
 		}
