@@ -28,6 +28,7 @@ type Loader struct {
 // * Initialization using the provided Factory;
 // * Registering the HTTP endpoints of each module;
 func (l *Loader) Register(cfg *config.AgentConfig, httpMux *http.ServeMux, factories []api.Factory) error {
+	var unsupportedErr error
 	unsupported := false
 	for _, factory := range factories {
 		module, err := factory.Fn(cfg)
@@ -40,6 +41,7 @@ func (l *Loader) Register(cfg *config.AgentConfig, httpMux *http.ServeMux, facto
 		// Track if there is an Unsupported error
 		if strings.HasPrefix(err.Error(), modules.ErrSysprobeUnsupported.Error()) {
 			unsupported = true
+			unsupportedErr = err
 		}
 
 		// In case a module failed to be started, do not make the whole `system-probe` abort.
@@ -63,7 +65,7 @@ func (l *Loader) Register(cfg *config.AgentConfig, httpMux *http.ServeMux, facto
 		if unsupported {
 			// If a tracer is unsupported by this operating system and no tracers were loaded,
 			// return the error so it can exit gracefully
-			return fmt.Errorf("%s: %s", modules.ErrSysprobeUnsupported, err)
+			return fmt.Errorf("%s: %s", modules.ErrSysprobeUnsupported, unsupportedErr)
 		}
 		return errors.New("no module could be loaded")
 	}
