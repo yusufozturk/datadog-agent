@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/DataDog/datadog-agent/cmd/system-probe/api"
+	"github.com/DataDog/datadog-agent/cmd/system-probe/modules"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/pkg/errors"
@@ -25,12 +26,18 @@ type Loader struct {
 // * Initialization using the provided Factory;
 // * Registering the HTTP endpoints of each module;
 func (l *Loader) Register(cfg *config.AgentConfig, httpMux *http.ServeMux, factories []api.Factory) error {
+	unsupported := false
 	for _, factory := range factories {
 		module, err := factory.Fn(cfg)
 
 		// If the module is not enabled we simply skip to the next one
 		if err == api.ErrNotEnabled {
 			continue
+		}
+
+		// Track if there is an Unsupported error
+		if strings.HasPrefix(err.Error(), modules.ErrSysprobeUnsupported.Error()) {
+			unsupported = true
 		}
 
 		// In case a module failed to be started, do not make the whole `system-probe` abort.
@@ -51,6 +58,11 @@ func (l *Loader) Register(cfg *config.AgentConfig, httpMux *http.ServeMux, facto
 	}
 
 	if len(l.modules) == 0 {
+		if unsupported {
+			// If a tracer is unsupported by this operating system and no tracers were loaded,
+			// return the error so it can exit gracefully
+			return fmt.Errorf("%s: %s", modules.ErrSysprobeUnsupported, err)
+		}
 		return errors.New("no module could be loaded")
 	}
 
