@@ -27,8 +27,8 @@ func (o *Obfuscator) obfuscateJSON(span *pb.Span, tag string, obfuscator *jsonOb
 }
 
 type jsonObfuscator struct {
-	keepKeys      map[string]bool // these keys will not be obfuscated
-	transformKeys map[string]bool // these keys pass through the transformer
+	keepKeys      map[string]bool // the values for these keys will not be obfuscated
+	transformKeys map[string]bool // the values for these keys pass through the transformer
 	transformer   func(string) string
 
 	scan     *scanner // scanner
