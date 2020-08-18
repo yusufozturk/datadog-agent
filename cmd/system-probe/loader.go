@@ -4,6 +4,7 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/DataDog/datadog-agent/cmd/system-probe/api"
