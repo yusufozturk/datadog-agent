@@ -48,7 +48,7 @@ func (o *Obfuscator) newJSONObfuscator(cfg *config.JSONObfuscationConfig) *jsonO
 	}
 	var (
 		transformKeys map[string]bool
-		transformer     func(string) string
+		transformer   func(string) string
 	)
 	if len(cfg.ObfuscateSQLValues) > 0 {
 		transformer = o.ObfuscateSQLStringSafe
@@ -80,6 +80,7 @@ func (p *jsonObfuscator) obfuscate(data []byte) (string, error) {
 
 	keyBuf := make([]byte, 0, 10) // recording key token
 	valBuf := make([]byte, 0, 10) // recording value
+
 	p.scan.reset()
 	for _, c := range data {
 		p.scan.bytes++
