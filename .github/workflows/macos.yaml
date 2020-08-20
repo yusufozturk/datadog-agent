@@ -20,14 +20,13 @@ on:
         required: true
         default: "a8226a8e78774afad285e7372fe8c6c179340dd9"
 
-
 jobs:
   macos_build:
     runs-on: macos-10.15
     defaults:
       run:
         shell: bash
-        working_directory: ~/go/src/github.com/DataDog/datadog-agent
+        working-directory: ~/go/src/github.com/DataDog/datadog-agent
     steps:
     - name: Set up builder
       run: |
