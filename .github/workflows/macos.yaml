@@ -26,7 +26,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ~/go/src/github.com/DataDog/datadog-agent
     steps:
     - name: Set up builder
       run: |
