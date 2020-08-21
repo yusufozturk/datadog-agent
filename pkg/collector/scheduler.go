@@ -72,6 +72,7 @@ func (s *CheckScheduler) Schedule(configs []integration.Config) {
 
 // Unschedule unschedules checks matching configs
 func (s *CheckScheduler) Unschedule(configs []integration.Config) {
+	log.Info("CELENE inside Unschedule")
 	for _, config := range configs {
 		if !config.IsCheckConfig() || config.HasFilter(containers.MetricsFilter) {
 			// skip non check and excluded configs.

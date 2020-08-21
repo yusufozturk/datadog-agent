@@ -124,6 +124,7 @@ func (c *Collector) RunCheck(ch check.Check) (check.ID, error) {
 
 // ReloadCheck stops and restart a check with a new configuration
 func (c *Collector) ReloadCheck(id check.ID, config, initConfig integration.Data, newSource string) error {
+	log.Info("CELENE inside ReloadCheck, id %s", id)
 	if !c.started() {
 		return fmt.Errorf("the collector is not running")
 	}
@@ -158,6 +159,7 @@ func (c *Collector) ReloadCheck(id check.ID, config, initConfig integration.Data
 	}
 
 	// re-schedule
+	log.Info("CELENE trying to reschedule")
 	c.scheduler.Enter(check) //nolint:errcheck
 
 	return nil
@@ -165,6 +167,8 @@ func (c *Collector) ReloadCheck(id check.ID, config, initConfig integration.Data
 
 // StopCheck halts a check and remove the instance
 func (c *Collector) StopCheck(id check.ID) error {
+	log.Info("CELENE inside StopCheck, id %s", id)
+
 	if !c.started() {
 		return fmt.Errorf("the collector is not running")
 	}
@@ -189,6 +193,8 @@ func (c *Collector) StopCheck(id check.ID) error {
 
 	// vaporize the check
 	c.delete(id)
+
+	log.Info("CELENE %s check deleted", id)
 
 	return nil
 }
