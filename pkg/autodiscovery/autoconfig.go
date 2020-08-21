@@ -8,6 +8,7 @@ package autodiscovery
 import (
 	"expvar"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -588,26 +589,25 @@ func (ac *AutoConfig) processNewService(svc listeners.Service) {
 		templates = append(templates, tpls...)
 	}
 
-	// CELENE crude loop
-	for {
-		if !svc.IsReady() {
-			time.Sleep(time.Second)
-			log.Info("CELENE not ready yet")
+	log.Infof("CELENE svc entity is %s", svc.GetEntity())
+	log.Infof("CELENE svc ready? %v", svc.IsReady())
+
+	for _, template := range templates {
+		// resolve the template
+		resolvedConfig, err := ac.resolveTemplateForService(template, svc)
+		if err != nil && strings.Contains(err.Error(), "service not ready") {
+			// CELENE if err contains "service not ready" sleep and try again
+			time.Sleep(2 * time.Second)
+			resolvedConfig, err = ac.resolveTemplateForService(template, svc)
+		}
+		if err != nil {
 			continue
 		}
-		log.Info("CELENE ready!")
-		for _, template := range templates {
-			// resolve the template
-			resolvedConfig, err := ac.resolveTemplateForService(template, svc)
-			if err != nil {
-				continue
-			}
 
-			// ask the Collector to schedule the checks
-			ac.schedule([]integration.Config{resolvedConfig})
-		}
-		break
+		// ask the Collector to schedule the checks
+		ac.schedule([]integration.Config{resolvedConfig})
 	}
+
 	// FIXME: schedule new services as well
 	ac.schedule([]integration.Config{
 		{
