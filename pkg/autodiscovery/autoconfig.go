@@ -588,15 +588,25 @@ func (ac *AutoConfig) processNewService(svc listeners.Service) {
 		templates = append(templates, tpls...)
 	}
 
-	for _, template := range templates {
-		// resolve the template
-		resolvedConfig, err := ac.resolveTemplateForService(template, svc)
-		if err != nil {
+	// CELENE crude loop
+	for {
+		if !svc.IsReady() {
+			time.Sleep(time.Second)
+			log.Info("CELENE not ready yet")
 			continue
 		}
+		log.Info("CELENE ready!")
+		for _, template := range templates {
+			// resolve the template
+			resolvedConfig, err := ac.resolveTemplateForService(template, svc)
+			if err != nil {
+				continue
+			}
 
-		// ask the Collector to schedule the checks
-		ac.schedule([]integration.Config{resolvedConfig})
+			// ask the Collector to schedule the checks
+			ac.schedule([]integration.Config{resolvedConfig})
+		}
+		break
 	}
 	// FIXME: schedule new services as well
 	ac.schedule([]integration.Config{
