@@ -298,7 +298,7 @@ def build_object_files(ctx, bundle_ebpf=False):
         '-D__KERNEL__',
         '-DCONFIG_64BIT',
         '-D__BPF_TRACING__',
-        '-DKBUILD_MODNAME=\'foo\'',
+        '-DKBUILD_MODNAME=("foo")',
         '-Wno-unused-value',
         '-Wno-pointer-sign',
         '-Wno-compare-distinct-pointer-types',
@@ -340,10 +340,6 @@ def build_object_files(ctx, bundle_ebpf=False):
             flags.extend(["-isystem", os.path.join(d, s)])
 
     cmd = "clang {flags} -c '{c_file}' -o '{bc_file}'"
-    print("---------------")
-    print("command executed:")
-    print(cmd)
-    print("---------------")
     llc_cmd = "llc -march=bpf -filetype=obj -o '{obj_file}' '{bc_file}'"
 
     commands = []
@@ -415,6 +411,9 @@ def build_object_files(ctx, bundle_ebpf=False):
         commands.append("gofmt -w -s {go_file}".format(go_file=go_file))
 
     for cmd in commands:
+        print("----------------")
+        print(cmd)
+        print("----------------")
         ctx.run(cmd)
 
 
