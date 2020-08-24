@@ -19,14 +19,14 @@ ClangCompiler::ClangCompiler(const char *name) :
     textDiagnosticPrinter(new clang::TextDiagnosticPrinter(errStream, diagOpts.get())),
     diagnosticsEngine(new clang::DiagnosticsEngine(diagID, diagOpts, textDiagnosticPrinter.get(), false)),
     defaultCflags({
-        "-O0", "-O2",
+        "-O2",
         "-D__KERNEL__",
         "-fno-color-diagnostics",
         "-fno-unwind-tables",
         "-fno-asynchronous-unwind-tables",
         "-x", "c"
     }),
-    theTriple("bpf-pc-linux")
+    theTriple("bpf")
 {
     if (!ClangCompiler::llvmInitialized) {
         LLVMInitializeBPFTarget();
@@ -39,15 +39,13 @@ ClangCompiler::ClangCompiler(const char *name) :
         ClangCompiler::llvmInitialized = true;
     }
 
-	theDriver = std::make_unique<clang::driver::Driver>(
+    theDriver = std::make_unique<clang::driver::Driver>(
 		name, getArch(), *diagnosticsEngine,
 		llvm::vfs::getRealFileSystem()
     );
 
-	std::string arch = "bpf";
     std::string Error;
-
-    theTarget = llvm::TargetRegistry::lookupTarget(arch, theTriple, Error);
+    theTarget = llvm::TargetRegistry::lookupTarget(theTriple.getTriple(), Error);
     if (!theTarget) {
         throw Error;
     }

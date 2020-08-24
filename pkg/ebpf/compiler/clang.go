@@ -3,8 +3,10 @@
 package compiler
 
 /*
-#cgo LDFLAGS: -lclangTooling -lclangCodeGen -lclangFrontend -lclangFrontendTool -lclangDriver -lclangSerialization -lclangParse -lclangSema -lclangStaticAnalyzerFrontend -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangAnalysis -lclangARCMigrate -lclangRewrite -lclangRewriteFrontend -lclangEdit -lclangAST -lclangLex -lclangBasic -lclang -lclangASTMatchers
-#cgo CPPFLAGS: -I/usr/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+#cgo LDFLAGS: -lclangCodeGen -lclangFrontend -lclangSerialization -lclangDriver -lclangParse -lclangSema -lclangAnalysis -lclangASTMatchers -lclangRewrite -lclangEdit -lclangAST -lclangLex -lclangBasic
+#cgo LDFLAGS: -L/opt/datadog-agent/embedded/lib -lLLVMXRay -lLLVMWindowsManifest -lLLVMTextAPI -lLLVMTableGen -lLLVMSymbolize -lLLVMDebugInfoPDB -lLLVMOrcJIT -lLLVMJITLink -lLLVMObjectYAML -lLLVMMIRParser -lLLVMMCJIT -lLLVMMCA -lLLVMLTO -lLLVMPasses -lLLVMObjCARCOpts -lLLVMLineEditor -lLLVMLibDriver -lLLVMGlobalISel -lLLVMFuzzMutate -lLLVMInterpreter -lLLVMExecutionEngine -lLLVMRuntimeDyld -lLLVMDlltoolDriver -lLLVMOption -lLLVMDebugInfoGSYM -lLLVMCoverage -lLLVMCoroutines -lLLVMipo -lLLVMInstrumentation -lLLVMVectorize -lLLVMLinker -lLLVMIRReader -lLLVMAsmParser -lLLVMBPFDisassembler -lLLVMMCDisassembler -lLLVMBPFCodeGen -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMDebugInfoDWARF -lLLVMCodeGen -lLLVMTarget -lLLVMScalarOpts -lLLVMInstCombine -lLLVMAggressiveInstCombine -lLLVMTransformUtils -lLLVMBitWriter -lLLVMAnalysis -lLLVMProfileData -lLLVMObject -lLLVMBitReader -lLLVMBitstreamReader -lLLVMCore -lLLVMRemarks -lLLVMBPFAsmParser -lLLVMMCParser -lLLVMBPFDesc -lLLVMMC -lLLVMDebugInfoCodeView -lLLVMDebugInfoMSF -lLLVMBinaryFormat -lLLVMBPFInfo -lLLVMSupport -lLLVMDemangle 
+#cgo LDFLAGS: -ldl
+#cgo CPPFLAGS: -I/usr/include -I/opt/datadog-agent/embedded/include -D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 
 #include <stdlib.h>
 #include "shim.h"
@@ -113,11 +115,19 @@ func NewEBPFCompiler(verbose bool) (*EBPFCompiler, error) {
 	}
 	arch := kernelArch()
 
-	var defaultFlags []string
+	defaultFlags := []string{
+		"-DCONFIG_64BIT",
+		"-D__BPF_TRACING__",
+		"-resource-dir",
+		"/opt/datadog-agent/embedded/lib/clang/9.0.1",
+	}
 	subdirs := []string{
 		"include",
 		"include/uapi",
 		"include/generated/uapi",
+		fmt.Sprintf("arch/%s/include", arch),
+		fmt.Sprintf("arch/%s/include/uapi", arch),
+		fmt.Sprintf("arch/%s/include/generated", arch),
 	}
 	cDir, err := filepath.Abs("../c")
 	if err != nil {
@@ -128,7 +138,6 @@ func NewEBPFCompiler(verbose bool) (*EBPFCompiler, error) {
 	base := path.Join("/usr/src", fmt.Sprintf("linux-headers-%s", releaseName))
 	for _, d := range subdirs {
 		defaultFlags = append(defaultFlags, "-isystem", path.Join(base, d))
-		defaultFlags = append(defaultFlags, "-isystem", path.Join(base, "arch", arch, d))
 	}
 
 	ebpfCompiler := &EBPFCompiler{

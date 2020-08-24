@@ -19,14 +19,14 @@ func TestCompilerMatch(t *testing.T) {
 	defer c.Close()
 	t.Logf("flags: %+v\n", c.defaultCflags)
 
-	onDiskFilename := "../c/offset-guess-static.o"
-	err = c.CompileToObjectFile("../c/offset-guess.c", onDiskFilename)
+	onDiskFilename := "../c/tracer-ebpf-static.o"
+	err = c.CompileToObjectFile("../c/tracer-ebpf.c", onDiskFilename)
 	require.NoError(t, err)
 
 	bs, err := ioutil.ReadFile(onDiskFilename)
 	require.NoError(t, err)
 
-	bundleFilename := "pkg/ebpf/c/offset-guess.o"
+	bundleFilename := "pkg/ebpf/c/tracer-ebpf.o"
 	actualReader, err := bytecode.GetReader("", bundleFilename)
 	require.NoError(t, err)
 
