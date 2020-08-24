@@ -88,7 +88,9 @@ func (f *discardFilter) Reset() {}
 
 // replaceFilter is a token filter which obfuscates strings and numbers in queries by replacing them
 // with the "?" character.
-type replaceFilter struct{}
+type replaceFilter struct {
+	normalizeTables bool
+}
 
 // Filter the given token so that it will be replaced if in the token replacement list
 func (f *replaceFilter) Filter(token, lastToken TokenKind, buffer []byte) (tokenType TokenKind, tokenBytes []byte, err error) {
@@ -109,8 +111,8 @@ func (f *replaceFilter) Filter(token, lastToken TokenKind, buffer []byte) (token
 		// Cases like 'ARRAY [ ?, ? ]' should be collapsed into 'ARRAY [ ? ]'
 		return FilteredGroupable, []byte("?"), nil
 	case Table:
-		if config.HasFeature("normalize_sql_tables") {
-			return token, f.replaceTableDigits(buffer), nil
+		if f.normalizeTables {
+			return token, f.replaceDigits(buffer), nil
 		}
 		fallthrough
 	default:
@@ -118,9 +120,9 @@ func (f *replaceFilter) Filter(token, lastToken TokenKind, buffer []byte) (token
 	}
 }
 
-// replaceTableDigits replaces consecutive sequences of digits with '?',
+// replaceDigits replaces consecutive sequences of digits with '?',
 // example: "jobs_2020_1597876964" --> "jobs_?_?"
-func (f *replaceFilter) replaceTableDigits(buffer []byte) []byte {
+func (f *replaceFilter) replaceDigits(buffer []byte) []byte {
 	buf := make([]byte, 0, len(buffer))
 	scanningDigit := false
 	for _, c := range string(buffer) {
@@ -214,6 +216,7 @@ func (o *Obfuscator) ObfuscateSQLString(in string) (*ObfuscatedQuery, error) {
 // tableFinderFilter is a filter which attempts to identify the table name as it goes through each
 // token in a query.
 type tableFinderFilter struct {
+	storeTableNames bool
 	// seen keeps track of unique table names encountered by the filter.
 	seen map[string]struct{}
 	// csv specifies a comma-separated list of tables
@@ -238,7 +241,7 @@ func (f *tableFinderFilter) Filter(token, lastToken TokenKind, buffer []byte) (T
 		// INSERT INTO [tableName]
 		token = Table
 
-		if config.HasFeature("table_names") {
+		if f.storeTableNames {
 			f.storeName(string(buffer))
 		}
 	}
@@ -280,15 +283,17 @@ type ObfuscatedQuery struct {
 // attemptObfuscation attempts to obfuscate the SQL query loaded into the tokenizer, using the
 // given set of filters.
 func attemptObfuscation(tokenizer *SQLTokenizer) (*ObfuscatedQuery, error) {
+	storeTableNames := config.HasFeature("table_names")
+	normalizeTables := config.HasFeature("normalize_sql_tables")
+
 	filters := []tokenFilter{
 		&discardFilter{},
 	}
-	tableFinder := &tableFinderFilter{}
-	if config.HasFeature("table_names") || config.HasFeature("normalize_sql_tables") {
+	tableFinder := &tableFinderFilter{storeTableNames: storeTableNames}
+	if storeTableNames || normalizeTables {
 		filters = append(filters, tableFinder)
 	}
-	filters = append(filters, &replaceFilter{})
-	filters = append(filters, &groupingFilter{})
+	filters = append(filters, &replaceFilter{normalizeTables: normalizeTables}, &groupingFilter{})
 
 	var (
 		out       bytes.Buffer

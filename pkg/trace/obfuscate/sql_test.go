@@ -263,7 +263,7 @@ func BenchmarkTableNormalizer(b *testing.B) {
 	b.Run("", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			rf.replaceTableDigits([]byte("sales_2019_07_01_orders"))
+			rf.replaceDigits([]byte("sales_2019_07_01_orders"))
 		}
 	})
 }
