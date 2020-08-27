@@ -918,7 +918,7 @@ iot_agent_deb-armhf:
     - set +x
     - RPM_GPG_KEY_PART1=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part1 --with-decryption --query "Parameter.Value" --out text)
     - RPM_GPG_KEY_PART2=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part2 --with-decryption --query "Parameter.Value" --out text)
-    - RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
+    - export RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
 
     - printf -- "$RPM_GPG_KEY_PART1\n$RPM_GPG_KEY_PART2\n" | gpg --import --batch
 
@@ -1042,7 +1042,7 @@ agent_rpm-arm64-a7:
     - set +x
     - RPM_GPG_KEY_PART1=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part1 --with-decryption --query "Parameter.Value" --out text)
     - RPM_GPG_KEY_PART2=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part2 --with-decryption --query "Parameter.Value" --out text)
-    - RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
+    - export RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
 
     - printf -- "$RPM_GPG_KEY_PART1\n$RPM_GPG_KEY_PART2\n" | gpg --import --batch
     - set -x
@@ -1090,7 +1090,7 @@ iot_agent_rpm-armhf:
     - set +x
     - RPM_GPG_KEY_PART1=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part1 --with-decryption --query "Parameter.Value" --out text)
     - RPM_GPG_KEY_PART2=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part2 --with-decryption --query "Parameter.Value" --out text)
-    - RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
+    - export RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
 
     - printf -- "$RPM_GPG_KEY_PART1\n$RPM_GPG_KEY_PART2\n" | gpg --import --batch
     - set -x
@@ -1180,7 +1180,7 @@ iot_agent_suse-x64:
     - set +x
     - RPM_GPG_KEY_PART1=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part1 --with-decryption --query "Parameter.Value" --out text)
     - RPM_GPG_KEY_PART2=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part2 --with-decryption --query "Parameter.Value" --out text)
-    - RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
+    - export RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
 
     - printf -- "$RPM_GPG_KEY_PART1\n$RPM_GPG_KEY_PART2\n" | gpg --import --batch
 
@@ -1475,7 +1475,7 @@ dogstatsd_rpm-x64:
     - set +x
     - RPM_GPG_KEY_PART1=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part1 --with-decryption --query "Parameter.Value" --out text)
     - RPM_GPG_KEY_PART2=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part2 --with-decryption --query "Parameter.Value" --out text)
-    - RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
+    - export RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
 
     - printf -- "$RPM_GPG_KEY_PART1\n$RPM_GPG_KEY_PART2\n" | gpg --import --batch
     - set -x
@@ -1516,7 +1516,7 @@ dogstatsd_suse-x64:
     - set +x
     - RPM_GPG_KEY_PART1=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part1 --with-decryption --query "Parameter.Value" --out text)
     - RPM_GPG_KEY_PART2=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_part2 --with-decryption --query "Parameter.Value" --out text)
-    - RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
+    - export RPM_GPG_KEY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.rpm_signing_private_key_2020_08_27_testing_passphrase --with-decryption --query "Parameter.Value" --out text)
 
     - printf -- "$RPM_GPG_KEY_PART1\n$RPM_GPG_KEY_PART2\n" | gpg --import --batch
     - set -x
