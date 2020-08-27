@@ -19,7 +19,7 @@ if ohai['platform'] == "windows"
   maintainer 'Datadog Inc.' # Windows doesn't want our e-mail address :(
 else
   if redhat? || suse?
-    maintainer 'Datadog, Inc <package@datadoghq.com>'
+    maintainer 'Datadog, Inc. RPM key (2020-08-27) TESTING (RPM key) <package+rpmkey@datadoghq.com>'
   else
     maintainer 'Datadog Packages <package@datadoghq.com>'
   end
