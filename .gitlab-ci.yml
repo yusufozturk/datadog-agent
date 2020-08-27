@@ -137,10 +137,10 @@ variables:
 #        it can be triggered by requesting a specific build)
 #
 .if_test_kitchen_deploy: &if_test_kitchen_deploy
-  if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_TAG != null || $DEPLOY_AGENT == "true" || $CI_PIPELINE_SOURCE == "web"
+  when: never #if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_TAG != null || $DEPLOY_AGENT == "true" || $CI_PIPELINE_SOURCE == "web"
 
 .if_not_test_kitchen_deploy: &if_not_test_kitchen_deploy
-  if: $CI_COMMIT_BRANCH != "master" && $CI_COMMIT_TAG == null && $DEPLOY_AGENT != "true" && $CI_PIPELINE_SOURCE != "web"
+  when: always #if: $CI_COMMIT_BRANCH != "master" && $CI_COMMIT_TAG == null && $DEPLOY_AGENT != "true" && $CI_PIPELINE_SOURCE != "web"
 
 # true only on deploys and when RELEASE_VERSION_X is NOT "nightly". In this setting
 # we are building either a new tagged version of the agent (an RC for example).
@@ -2069,7 +2069,7 @@ kitchen_centos_install_script_dogstatsd-a7:
 kitchen_centos_step_by_step_agent-a6:
   allow_failure: false
   rules:
-    - <<: *if_deploy_6
+    - when: never
   extends:
     - .kitchen_scenario_centos_a6
     - .kitchen_test_step_by_step_agent
@@ -2077,7 +2077,7 @@ kitchen_centos_step_by_step_agent-a6:
 kitchen_centos_step_by_step_agent-a7:
   allow_failure: false
   rules:
-    - <<: *if_deploy_7
+    - when: never
   extends:
     - .kitchen_scenario_centos_a7
     - .kitchen_test_step_by_step_agent
@@ -2148,7 +2148,7 @@ kitchen_ubuntu_install_script_dogstatsd-a7:
 kitchen_ubuntu_step_by_step_agent-a6:
   allow_failure: false
   rules:
-    - <<: *if_deploy_6
+    - when: never
   extends:
     - .kitchen_scenario_ubuntu_a6
     - .kitchen_test_step_by_step_agent
@@ -2156,7 +2156,7 @@ kitchen_ubuntu_step_by_step_agent-a6:
 kitchen_ubuntu_step_by_step_agent-a7:
   allow_failure: false
   rules:
-    - <<: *if_deploy_7
+    - when: never
   extends:
     - .kitchen_scenario_ubuntu_a7
     - .kitchen_test_step_by_step_agent
@@ -2226,7 +2226,7 @@ kitchen_suse_install_script_dogstatsd-a7:
 kitchen_suse_step_by_step_agent-a6:
   allow_failure: false
   rules:
-    - <<: *if_deploy_6
+    - when: never
   extends:
     - .kitchen_scenario_suse_a6
     - .kitchen_test_step_by_step_agent
@@ -2234,7 +2234,7 @@ kitchen_suse_step_by_step_agent-a6:
 kitchen_suse_step_by_step_agent-a7:
   allow_failure: false
   rules:
-    - <<: *if_deploy_7
+    - when: never
   extends:
     - .kitchen_scenario_suse_a7
     - .kitchen_test_step_by_step_agent
@@ -2305,7 +2305,7 @@ kitchen_debian_install_script_dogstatsd-a7:
 kitchen_debian_step_by_step_agent-a6:
   allow_failure: false
   rules:
-    - <<: *if_deploy_6
+    - when: never
   extends:
     - .kitchen_scenario_debian_a6
     - .kitchen_test_step_by_step_agent
@@ -2313,7 +2313,7 @@ kitchen_debian_step_by_step_agent-a6:
 kitchen_debian_step_by_step_agent-a7:
   allow_failure: false
   rules:
-    - <<: *if_deploy_7
+    - when: never
   extends:
     - .kitchen_scenario_debian_a7
     - .kitchen_test_step_by_step_agent
