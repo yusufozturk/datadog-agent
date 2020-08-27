@@ -6,13 +6,23 @@
 package logs
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	stdHttp "net/http"
+	"net/url"
+	"path"
+	"regexp"
 	"sync/atomic"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/metrics"
 
+	coreConfig "github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/util"
+	httputils "github.com/DataDog/datadog-agent/pkg/util/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/version"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/client/http"
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
@@ -35,6 +45,10 @@ const (
 	TransportHTTP Transport = "HTTP"
 	// TransportTCP indicates logs-agent is using TCP transport
 	TransportTCP Transport = "TCP"
+	// Metadata Polling interval in Seconds
+	MetaPollInterval time.Duration = 2 * time.Second
+	// Metadata API endpoint
+	MetaEndpoint string = "api/v1/tags/hosts/"
 )
 
 var (
@@ -71,7 +85,9 @@ func Start() error {
 	if err != nil {
 		message := fmt.Sprintf("Invalid endpoints: %v", err)
 		status.AddGlobalError(invalidEndpoints, message)
-		return errors.New(message)
+
+		e := errors.New(message)
+		log.Error("Could not start logs-agent: ", e)
 	}
 	CurrentTransport = TransportTCP
 	if endpoints.UseHTTP {
@@ -86,12 +102,29 @@ func Start() error {
 	if err != nil {
 		message := fmt.Sprintf("Invalid processing rules: %v", err)
 		status.AddGlobalError(invalidProcessingRules, message)
-		return errors.New(message)
+		e := errors.New(message)
+		log.Error("Could not start logs-agent: ", e)
+
+		return e
 	}
 
 	// setup and start the agent
 	agent = NewAgent(sources, services, processingRules, endpoints)
 	log.Info("Starting logs-agent...")
+
+	metadataTO := coreConfig.Datadog.GetInt("logs_config.logs_meta_timeout")
+	if metadataTO > 0 {
+		if coreConfig.Datadog.GetString("app_key") != "" {
+			// poll for a certain amount of time
+			err := metadataReady(endpoints, metadataTO)
+			if err != nil {
+				log.Infof("There was an issue waiting for the metadata: %v", err)
+			}
+		} else {
+			log.Info("Application key required to wait for host tags on backend, skipping wait.")
+		}
+	}
+
 	agent.Start()
 	atomic.StoreInt32(&isRunning, 1)
 	log.Info("logs-agent started")
@@ -121,6 +154,108 @@ func Stop() {
 		atomic.StoreInt32(&isRunning, 0)
 	}
 	log.Info("logs-agent stopped")
+}
+
+func pollMeta(endpoint string, tags []string) (bool, error) {
+	hostname, err := util.GetHostname()
+	if err != nil {
+		return false, err
+	}
+
+	uri, err := url.Parse(endpoint)
+	if err != nil {
+		return false, err
+	}
+	uri.Scheme = "https"
+
+	uri.Path = path.Join(uri.Path, hostname)
+	transport := httputils.CreateHTTPTransport()
+
+	// TODO: set a timeout on the client
+	client := &stdHttp.Client{
+		Transport: transport,
+	}
+
+	log.Debugf("Polling for metadata: %v", uri)
+	req, err := stdHttp.NewRequest("GET", uri.String(), nil)
+	if err != nil {
+		return false, err
+	}
+
+	req.Header.Set("User-Agent", fmt.Sprintf("datadog-agent/%s", version.AgentVersion))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("DD-API-KEY", coreConfig.Datadog.GetString("api_key"))
+	req.Header.Set("DD-APPLICATION-KEY", coreConfig.Datadog.GetString("app_key"))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	// Server will respond 200 if the key is valid or 403 if invalid
+	if resp.StatusCode == 200 {
+		var jsonResponse map[string]interface{}
+
+		json.NewDecoder(resp.Body).Decode(&jsonResponse)
+		log.Debugf("metadata response received: %v", jsonResponse)
+		_, found := jsonResponse["tags"]
+		if !found {
+			return false, nil
+		}
+
+		tagSet := make(map[string]struct{})
+		for _, tag := range jsonResponse["tags"].([]interface{}) {
+			tagSet[tag.(string)] = struct{}{}
+		}
+
+		ready := true
+		for _, tag := range tags {
+			_, ok := tagSet[tag]
+			if !ok {
+				ready = false
+			}
+		}
+
+		return ready, nil
+
+	} else if resp.StatusCode == 403 {
+		return false, nil
+	}
+
+	return false, nil
+}
+
+//TODO: stop this if the agents shuts down
+func metadataReady(endpoints *config.Endpoints, timeout int) error {
+	timer := time.NewTimer(time.Duration(timeout) * time.Second)
+	ticker := time.NewTicker(MetaPollInterval)
+
+	var api string
+	re := regexp.MustCompile(`datadoghq.(com|eu){1}$`)
+	if re.MatchString(endpoints.Main.Host) {
+		api = path.Join(fmt.Sprintf("api.%s", re.FindString(endpoints.Main.Host)), MetaEndpoint)
+	} else {
+		message := fmt.Sprintf("unsupported target domain: %s", endpoints.Main.Host)
+		return errors.New(message)
+	}
+
+	tags := coreConfig.Datadog.GetStringSlice("tags")
+
+	for {
+		select {
+		case <-timer.C:
+			log.Info("Timeout waiting for host metadata, some log entries may be missing host tags")
+			return errors.New("unable to resolve metadata in time")
+		case <-ticker.C:
+			found, err := pollMeta(api, tags)
+			if err != nil {
+				log.Infof("There was an issue grabbing the host tags: %v", err)
+			} else if found {
+				return nil
+			}
+		}
+	}
 }
 
 // IsAgentRunning returns true if the logs-agent is running.

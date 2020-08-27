@@ -530,6 +530,7 @@ func InitConfig(config Config) {
 	// specific logs-agent api-key
 	config.BindEnv("logs_config.api_key") //nolint:errcheck
 	config.BindEnvAndSetDefault("logs_config.logs_no_ssl", false)
+	config.BindEnvAndSetDefault("logs_config.logs_meta_timeout", 0)
 	// send the logs to the port 443 of the logs-backend via TCP:
 	config.BindEnvAndSetDefault("logs_config.use_port_443", false)
 	// increase the read buffer size of the UDP sockets:
@@ -696,7 +697,6 @@ func InitConfig(config Config) {
 	config.SetKnown("system_probe_config.enable_oom_kill")
 	config.SetKnown("system_probe_config.enable_tracepoints")
 	config.SetKnown("system_probe_config.windows.enable_monotonic_count")
-	config.SetKnown("system_probe_config.windows.driver_buffer_size")
 
 	// Network
 	config.BindEnv("network.id") //nolint:errcheck
@@ -711,7 +711,6 @@ func InitConfig(config Config) {
 	config.SetKnown("apm_config.log_file")
 	config.SetKnown("apm_config.apm_dd_url")
 	config.SetKnown("apm_config.profiling_dd_url")
-	config.SetKnown("apm_config.profiling_additional_endpoints.*")
 	config.SetKnown("apm_config.max_cpu_percent")
 	config.SetKnown("apm_config.receiver_port")
 	config.SetKnown("apm_config.receiver_socket")

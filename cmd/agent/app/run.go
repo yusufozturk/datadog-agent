@@ -300,10 +300,9 @@ func StartAgent() error {
 		if config.Datadog.GetBool("log_enabled") {
 			log.Warn(`"log_enabled" is deprecated, use "logs_enabled" instead`)
 		}
-		err := logs.Start()
-		if err != nil {
-			log.Error("Could not start logs-agent: ", err)
-		}
+
+		// async start
+		go logs.Start()
 	} else {
 		log.Info("logs-agent disabled")
 	}
