@@ -18,11 +18,7 @@ if ohai['platform'] == "windows"
   python_3_embedded "#{install_dir}/embedded3"
   maintainer 'Datadog Inc.' # Windows doesn't want our e-mail address :(
 else
-  if redhat? || suse?
-    maintainer 'Datadog, Inc. RPM key (2020-08-27) TESTING (RPM key) <package+rpmkey@datadoghq.com>'
-  else
-    maintainer 'Datadog Packages <package@datadoghq.com>'
-  end
+  maintainer 'Datadog Packages <package@datadoghq.com>'
 
   if osx?
     unless ENV['SKIP_SIGN_MAC'] == 'true'
@@ -73,8 +69,9 @@ package :rpm do
   license 'Apache License Version 2.0'
   category 'System Environment/Daemons'
   priority 'extra'
-  if ENV.has_key?('RPM_SIGNING_PASSPHRASE') and not ENV['RPM_SIGNING_PASSPHRASE'].empty?
-    signing_passphrase "#{ENV['RPM_SIGNING_PASSPHRASE']}"
+  if ENV.has_key?('RPM_GPG_KEY_PASSPHRASE') and not ENV['RPM_GPG_KEY_PASSPHRASE'].empty?
+    gpg_key_name "Datadog, Inc. RPM key (2020-08-27) TESTING (RPM key) <package+rpmkey@datadoghq.com>"
+    signing_passphrase "#{ENV['RPM_GPG_KEY_PASSPHRASE']}"
   end
 end
 
