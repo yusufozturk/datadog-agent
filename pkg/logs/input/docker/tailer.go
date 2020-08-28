@@ -193,6 +193,7 @@ func (t *Tailer) readForever() {
 					// before starting to send any data when it has stored several large log files.
 					// Increasing the docker_client_read_timeout could help avoiding such a situation.
 					if err := t.tryRestartReader("Restarting reader after a read timeout"); err != nil {
+						log.Debugf("Tailer.readForever: tryRestartReader: isContextCanceled: error: %s\n", err)
 						return
 					}
 					continue
@@ -212,6 +213,7 @@ func (t *Tailer) readForever() {
 					// restart the reader (restartReader() include 1second wait)
 					t.source.Status.Error(fmt.Errorf("log decoder returns an EOF error that will trigger a Reader restart, container: %v", ShortContainerID(t.ContainerID)))
 					if err := t.tryRestartReader("log decoder returns an EOF error that will trigger a Reader restart"); err != nil {
+						log.Debugf("Tailer.readForever: tryRestartReader: EOF: error: %s\n", err)
 						return
 					}
 					continue
