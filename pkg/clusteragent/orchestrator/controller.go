@@ -55,6 +55,11 @@ type Controller struct {
 	rsListerSync            cache.InformerSynced
 	serviceLister           corelisters.ServiceLister
 	serviceListerSync       cache.InformerSynced
+	nodeLister              corelisters.NodeLister
+	nodeListerSync          cache.InformerSynced
+	nsLister                corelisters.NamespaceLister
+	nsListerSync            cache.InformerSynced
+	client                  kubernetes.Interface
 	groupID                 int32
 	hostName                string
 	clusterName             string
@@ -91,19 +96,23 @@ func StartController(ctx ControllerContext) error {
 		apiserver.DeploysInformer:     ctx.InformerFactory.Apps().V1().Deployments().Informer(),
 		apiserver.ReplicaSetsInformer: ctx.InformerFactory.Apps().V1().ReplicaSets().Informer(),
 		apiserver.ServicesInformer:    ctx.InformerFactory.Core().V1().Services().Informer(),
+		apiserver.NodesInformer:       ctx.InformerFactory.Core().V1().Nodes().Informer(),
+		apiserver.NamespacesInformer:  ctx.InformerFactory.Core().V1().Namespaces().Informer(),
 	})
 }
 
 func newController(ctx ControllerContext) (*Controller, error) {
-	podInformer := ctx.UnassignedPodInformerFactory.Core().V1().Pods()
 	clusterID, err := clustername.GetClusterID()
 	if err != nil {
 		return nil, err
 	}
 
+	podInformer := ctx.UnassignedPodInformerFactory.Core().V1().Pods()
 	deployInformer := ctx.InformerFactory.Apps().V1().Deployments()
 	rsInformer := ctx.InformerFactory.Apps().V1().ReplicaSets()
 	serviceInformer := ctx.InformerFactory.Core().V1().Services()
+	nodesInformer := ctx.InformerFactory.Core().V1().Nodes()
+	namespacesInformer := ctx.InformerFactory.Core().V1().Namespaces()
 
 	cfg := processcfg.NewDefaultAgentConfig(true)
 	if err := cfg.LoadProcessYamlConfig(ctx.ConfigPath); err != nil {
@@ -127,11 +136,16 @@ func newController(ctx ControllerContext) (*Controller, error) {
 		rsListerSync:            rsInformer.Informer().HasSynced,
 		serviceLister:           serviceInformer.Lister(),
 		serviceListerSync:       serviceInformer.Informer().HasSynced,
+		nodeListerSync:          nodesInformer.Informer().HasSynced,
+		nodeLister:              nodesInformer.Lister(),
+		nsListerSync:            namespacesInformer.Informer().HasSynced,
+		nsLister:                namespacesInformer.Lister(),
 		groupID:                 rand.Int31(),
 		hostName:                ctx.Hostname,
 		clusterName:             ctx.ClusterName,
 		clusterID:               clusterID,
 		processConfig:           cfg,
+		client:                  ctx.Client,
 		forwarder:               forwarder.NewDefaultForwarder(podForwarderOpts),
 		isLeaderFunc:            ctx.IsLeaderFunc,
 		isScrubbingEnabled:      config.Datadog.GetBool("orchestrator_explorer.container_scrubbing.enabled"),
@@ -139,6 +153,10 @@ func newController(ctx ControllerContext) (*Controller, error) {
 
 	oc.processConfig = cfg
 	return oc, nil
+}
+
+func (o *Controller) getInformersSync() []cache.InformerSynced {
+	return []cache.InformerSynced{o.unassignedPodListerSync, o.deployListerSync, o.rsListerSync, o.serviceListerSync, o.nodeListerSync, o.nsListerSync}
 }
 
 // Run starts the orchestrator controller
@@ -151,7 +169,7 @@ func (o *Controller) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	if !cache.WaitForCacheSync(stopCh, o.unassignedPodListerSync, o.deployListerSync, o.rsListerSync, o.serviceListerSync) {
+	if !cache.WaitForCacheSync(stopCh, o.getInformersSync()...) {
 		return
 	}
 
@@ -160,6 +178,7 @@ func (o *Controller) Run(stopCh <-chan struct{}) {
 		o.processReplicaSets,
 		o.processDeploys,
 		o.processServices,
+		o.processClusterInformation,
 	}
 
 	spreadProcessors(processors, 2*time.Second, 10*time.Second, stopCh)
@@ -187,6 +206,35 @@ func (o *Controller) processDeploys() {
 	}
 
 	o.sendMessages(msg, forwarder.PayloadTypeDeployment)
+}
+
+// TODO: in the future we should make this configurable and run less often as the other resources as this is less volatile
+func (o *Controller) processClusterInformation() {
+	if !o.isLeaderFunc() {
+		return
+	}
+	nsList, err := o.nsLister.List(labels.Everything())
+	if err != nil {
+		log.Errorf("Unable list nameSpaces: %v", err)
+		return
+	}
+	nodesList, err := o.nodeLister.List(labels.Everything())
+	if err != nil {
+		log.Errorf("Unable list nodes: %v", err)
+		return
+	}
+	serverVersion, err := o.client.Discovery().ServerVersion()
+	if err != nil {
+		log.Errorf("Unable retrieve server version: %v", err)
+		return
+	}
+
+	msg, err := processCluster(nsList, nodesList, atomic.AddInt32(&o.groupID, 1), o.clusterName, o.clusterID, serverVersion)
+	if err != nil {
+		log.Errorf("Unable to process cluster information: %v", err)
+		return
+	}
+	o.sendMessages(msg, forwarder.PayloadTypeCluster)
 }
 
 func (o *Controller) processReplicaSets() {

@@ -52,7 +52,7 @@ require (
 	code.cloudfoundry.org/rep v0.0.0-20200325195957-1404b978e31e // indirect
 	code.cloudfoundry.org/rfc5424 v0.0.0-20180905210152-236a6d29298a // indirect
 	code.cloudfoundry.org/tlsconfig v0.0.0-20200131000646-bbe0f8da39b3 // indirect
-	github.com/DataDog/agent-payload v4.43.0+incompatible
+	github.com/DataDog/agent-payload v4.42.1-0.20200828094645-d8f7aeeedc64+incompatible
 	github.com/DataDog/datadog-go v3.5.0+incompatible
 	github.com/DataDog/datadog-operator v0.2.1-0.20200527110245-7850164045c8
 	github.com/DataDog/ebpf v0.0.0-20200825200022-7a8f7d072a50
@@ -93,7 +93,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4
 	github.com/go-openapi/spec v0.19.8 // indirect
 	github.com/go-test/deep v1.0.5 // indirect
-	github.com/gobwas/glob v0.2.3
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible
 	github.com/gogo/googleapis v1.3.2 // indirect
 	github.com/gogo/protobuf v1.3.1

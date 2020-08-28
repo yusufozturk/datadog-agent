@@ -18,6 +18,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/version"
 )
 
 func processDeploymentList(deploymentList []*v1.Deployment, groupID int32, cfg *config.AgentConfig, clusterName string, clusterID string, withScrubbing bool) ([]model.MessageBody, error) {
@@ -25,25 +26,22 @@ func processDeploymentList(deploymentList []*v1.Deployment, groupID int32, cfg *
 	deployMsgs := make([]*model.Deployment, 0, len(deploymentList))
 
 	for d := 0; d < len(deploymentList); d++ {
-		depl := deploymentList[d]
-		if orchestrator.SkipKubernetesResource(depl.UID, depl.ResourceVersion) {
-			continue
-		}
-
 		// extract deployment info
-		deployModel := extractDeployment(depl)
+		deployModel := extractDeployment(deploymentList[d])
+
 		// scrub & generate YAML
 		if withScrubbing {
-			for c := 0; c < len(depl.Spec.Template.Spec.InitContainers); c++ {
-				orchestrator.ScrubContainer(&depl.Spec.Template.Spec.InitContainers[c], cfg)
+			for c := 0; c < len(deploymentList[d].Spec.Template.Spec.InitContainers); c++ {
+				orchestrator.ScrubContainer(&deploymentList[d].Spec.Template.Spec.InitContainers[c], cfg)
 			}
 			for c := 0; c < len(deploymentList[d].Spec.Template.Spec.Containers); c++ {
-				orchestrator.ScrubContainer(&depl.Spec.Template.Spec.Containers[c], cfg)
+				orchestrator.ScrubContainer(&deploymentList[d].Spec.Template.Spec.Containers[c], cfg)
 			}
 		}
+
 		// k8s objects only have json "omitempty" annotations
 		// and marshalling is more performant than YAML
-		jsonDeploy, err := jsoniter.Marshal(depl)
+		jsonDeploy, err := jsoniter.Marshal(deploymentList[d])
 		if err != nil {
 			log.Debugf("Could not marshal deployment to JSON: %s", err)
 			continue
@@ -69,7 +67,7 @@ func processDeploymentList(deploymentList []*v1.Deployment, groupID int32, cfg *
 		})
 	}
 
-	log.Debugf("Collected & enriched %d out of %d deployments in %s", len(deployMsgs), len(deploymentList), time.Now().Sub(start))
+	log.Debugf("Collected & enriched %d deployments in %s", len(deployMsgs), time.Now().Sub(start))
 	return messages, nil
 }
 
@@ -97,27 +95,22 @@ func processReplicaSetList(rsList []*v1.ReplicaSet, groupID int32, cfg *config.A
 	rsMsgs := make([]*model.ReplicaSet, 0, len(rsList))
 
 	for rs := 0; rs < len(rsList); rs++ {
-		r := rsList[rs]
-		if orchestrator.SkipKubernetesResource(r.UID, r.ResourceVersion) {
-			continue
-		}
-
 		// extract replica set info
-		rsModel := extractReplicaSet(r)
+		rsModel := extractReplicaSet(rsList[rs])
 
 		// scrub & generate YAML
 		if withScrubbing {
-			for c := 0; c < len(r.Spec.Template.Spec.InitContainers); c++ {
-				orchestrator.ScrubContainer(&r.Spec.Template.Spec.InitContainers[c], cfg)
+			for c := 0; c < len(rsList[rs].Spec.Template.Spec.InitContainers); c++ {
+				orchestrator.ScrubContainer(&rsList[rs].Spec.Template.Spec.InitContainers[c], cfg)
 			}
-			for c := 0; c < len(r.Spec.Template.Spec.Containers); c++ {
-				orchestrator.ScrubContainer(&r.Spec.Template.Spec.Containers[c], cfg)
+			for c := 0; c < len(rsList[rs].Spec.Template.Spec.Containers); c++ {
+				orchestrator.ScrubContainer(&rsList[rs].Spec.Template.Spec.Containers[c], cfg)
 			}
 		}
 
 		// k8s objects only have json "omitempty" annotations
 		// and marshalling is more performant than YAML
-		jsonRS, err := jsoniter.Marshal(r)
+		jsonRS, err := jsoniter.Marshal(rsList[rs])
 		if err != nil {
 			log.Debugf("Could not marshal replica set to JSON: %s", err)
 			continue
@@ -143,7 +136,7 @@ func processReplicaSetList(rsList []*v1.ReplicaSet, groupID int32, cfg *config.A
 		})
 	}
 
-	log.Debugf("Collected & enriched %d out of %d replica sets in %s", len(rsMsgs), len(rsList), time.Now().Sub(start))
+	log.Debugf("Collected & enriched %d replica sets in %s", len(rsMsgs), time.Now().Sub(start))
 	return messages, nil
 }
 
@@ -172,16 +165,11 @@ func processServiceList(serviceList []*corev1.Service, groupID int32, cfg *confi
 	serviceMsgs := make([]*model.Service, 0, len(serviceList))
 
 	for s := 0; s < len(serviceList); s++ {
-		svc := serviceList[s]
-		if orchestrator.SkipKubernetesResource(svc.UID, svc.ResourceVersion) {
-			continue
-		}
-
-		serviceModel := extractService(svc)
+		serviceModel := extractService(serviceList[s])
 
 		// k8s objects only have json "omitempty" annotations
 		// + marshalling is more performant than YAML
-		jsonSvc, err := jsoniter.Marshal(svc)
+		jsonSvc, err := jsoniter.Marshal(serviceList[s])
 		if err != nil {
 			log.Debugf("Could not marshal service to JSON: %s", err)
 			continue
@@ -209,7 +197,7 @@ func processServiceList(serviceList []*corev1.Service, groupID int32, cfg *confi
 		})
 	}
 
-	log.Debugf("Collected & enriched %d out of %d services in %s", len(serviceMsgs), len(serviceList), time.Now().Sub(start))
+	log.Debugf("Collected & enriched %d services in %s", len(serviceMsgs), time.Now().Sub(start))
 	return messages, nil
 }
 
@@ -231,4 +219,20 @@ func chunkServices(services []*model.Service, chunkCount, chunkSize int) [][]*mo
 	}
 
 	return chunks
+}
+
+// processCluster process a nodes and namespaces list which forms the cluster resource.
+func processCluster(nsList []*corev1.Namespace, nodeList []*corev1.Node, groupID int32, clusterName string, clusterID string, serverVersion *version.Info) ([]model.MessageBody, error) {
+	start := time.Now()
+	cluster := extractCluster(nodeList, nsList, clusterName, clusterID, serverVersion)
+	collectorCluster := model.CollectorCluster{
+		ClusterName: clusterName,
+		ClusterId:   clusterID,
+		GroupId:     groupID,
+		Cluster:     cluster,
+	}
+
+	msg := []model.MessageBody{&collectorCluster}
+	log.Debugf("Collected & enriched cluster in %s", time.Now().Sub(start))
+	return msg, nil
 }
