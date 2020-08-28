@@ -148,6 +148,7 @@ func (t *Tailer) tryRestartReader(reason string) error {
 		log.Warnf("Could not restart the docker reader for container %v: %v:", ShortContainerID(t.ContainerID), err)
 		t.erroredContainerID <- t.ContainerID
 	}
+	t.source.Status.Success()
 	return err
 }
 
