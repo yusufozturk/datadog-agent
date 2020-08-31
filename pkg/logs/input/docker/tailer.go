@@ -256,9 +256,11 @@ func (t *Tailer) read(buffer []byte, timeout time.Duration) (int, error) {
 
 	select {
 	case <-doneReading:
+		log.Trace("Tailer.read: doneReading received")
 	case <-time.After(timeout):
 		// Cancel the docker socket reader context
 		t.cancelFunc()
+		log.Debug("Tailer.read: timeout")
 		<-doneReading
 	}
 

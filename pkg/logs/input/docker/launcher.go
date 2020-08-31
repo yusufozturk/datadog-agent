@@ -165,11 +165,14 @@ func (l *Launcher) run() {
 
 // overrideSource create a new source with the image short name if the source is ContainerCollectAll
 func (l *Launcher) overrideSource(container *Container, source *config.LogSource) *config.LogSource {
+	log.Debugf("Launcher.overrideSource: container ID %s | log source: %s", ShortContainerID(container.service.Identifier), source.Name)
+
 	standardService := l.serviceNameFunc(container.container.Name, dockerutil.ContainerIDToTaggerEntityName(container.container.ID))
 	if source.Name != config.ContainerCollectAll {
 		if source.Config.Service == "" && standardService != "" {
 			source.Config.Service = standardService
 		}
+		log.Debugf("Launcher.overrideSource: container ID %s | log source: %s: service set to standard service", ShortContainerID(container.service.Identifier), source.Name)
 		return source
 	}
 
@@ -184,6 +187,7 @@ func (l *Launcher) overrideSource(container *Container, source *config.LogSource
 		return source
 	}
 
+	log.Debugf("Launcher.overrideSource: container ID %s | log source: %s: returning a new overriden source, shrotname: %s", ShortContainerID(container.service.Identifier), source.Name, shortName)
 	return newOverridenSource(standardService, shortName, source.Status)
 }
 
