@@ -187,7 +187,7 @@ func (l *Launcher) overrideSource(container *Container, source *config.LogSource
 		return source
 	}
 
-	log.Debugf("Launcher.overrideSource: container ID %s | log source: %s: returning a new overriden source, shrotname: %s", ShortContainerID(container.service.Identifier), source.Name, shortName)
+	log.Debugf("Launcher.overrideSource: container ID %s | log source: %s: returning a new overridden source, shrotname: %s", ShortContainerID(container.service.Identifier), source.Name, shortName)
 	return newOverridenSource(standardService, shortName, source.Status)
 }
 
