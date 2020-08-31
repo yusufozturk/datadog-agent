@@ -143,17 +143,19 @@ func (t *Tailer) setupReader() error {
 func (t *Tailer) tryRestartReader(reason string) error {
 	log.Debugf("%s for container %v", reason, ShortContainerID(t.ContainerID))
 	t.wait()
+	log.Debugf("%s for container %v: before setupReader", reason, ShortContainerID(t.ContainerID))
 	err := t.setupReader()
+	log.Debugf("%s for container %v: after setupReader", reason, ShortContainerID(t.ContainerID))
 	if err != nil {
 		log.Warnf("Could not restart the docker reader for container %v: %v:", ShortContainerID(t.ContainerID), err)
 		t.erroredContainerID <- t.ContainerID
 	}
-	t.source.Status.Success()
 	return err
 }
 
 // tail sets up and starts the tailer
 func (t *Tailer) tail(since string) error {
+	log.Tracef("Tailer.tail: %s", t.ContainerID)
 	t.setLastSince(since)
 	err := t.setupReader()
 	if err != nil {
@@ -174,6 +176,7 @@ func (t *Tailer) tail(since string) error {
 // readForever reads from the reader as fast as it can,
 // and sleeps when there is nothing to read
 func (t *Tailer) readForever() {
+	log.Tracef("Tailer.readForever: %s", t.ContainerID)
 	defer t.decoder.Stop()
 	for {
 		select {
@@ -190,6 +193,7 @@ func (t *Tailer) readForever() {
 					// of the tailer, stop reading
 					return
 				case isContextCanceled(err):
+					log.Debug("Tailer.readForever: tryRestartReader: isContextCanceled case")
 					// Note that it could happen that the docker daemon takes a lot of time gathering timestamps
 					// before starting to send any data when it has stored several large log files.
 					// Increasing the docker_client_read_timeout could help avoiding such a situation.
@@ -200,11 +204,13 @@ func (t *Tailer) readForever() {
 					continue
 				case isClosedConnError(err):
 					// This error is raised when the agent is stopping
+					log.Debug("Tailer.readForever: tryRestartReader: isClosedConnError case")
 					return
 				case isFileAlreadyClosed(err):
 					// This error seems to be returned by Docker for Windows
 					// See: https://github.com/microsoft/go-winio/blob/master/file.go
 					// We can probably just wait to get more data
+					log.Debug("Tailer.readForever: tryRestartReader: isFileAlreadyClosed case")
 					continue
 				case err == io.EOF:
 					// This error is raised when:
@@ -212,6 +218,7 @@ func (t *Tailer) readForever() {
 					// * when the container has not started to output logs yet.
 					// * during a file rotation.
 					// restart the reader (restartReader() include 1second wait)
+					log.Debug("Tailer.readForever: tryRestartReader: hitting the EOF case")
 					t.source.Status.Error(fmt.Errorf("log decoder returns an EOF error that will trigger a Reader restart, container: %v", ShortContainerID(t.ContainerID)))
 					if err := t.tryRestartReader("log decoder returns an EOF error that will trigger a Reader restart"); err != nil {
 						log.Debugf("Tailer.readForever: tryRestartReader: EOF: error: %s\n", err)
