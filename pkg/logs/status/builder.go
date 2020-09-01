@@ -145,7 +145,14 @@ func (b *Builder) groupSourcesByName() map[string][]*config.LogSource {
 	for _, source := range b.sources.GetSources() {
 		if _, exists := sources[source.Name]; !exists {
 			sources[source.Name] = []*config.LogSource{}
+		} else {
+			fmt.Println("----------------------------------------------------")
+			fmt.Println("debug: this source is already existing while building the status:", source.Name)
+			fmt.Println(source)
+			fmt.Println("existing:", sources[source.Name])
+			fmt.Println("----------------------------------------------------")
 		}
+
 		sources[source.Name] = append(sources[source.Name], source)
 	}
 	return sources
