@@ -295,6 +295,19 @@ func StartAgent() error {
 		}
 	}
 
+	// start logs-agent
+	if config.Datadog.GetBool("logs_enabled") || config.Datadog.GetBool("log_enabled") {
+		if config.Datadog.GetBool("log_enabled") {
+			log.Warn(`"log_enabled" is deprecated, use "logs_enabled" instead`)
+		}
+		err := logs.Start()
+		if err != nil {
+			log.Error("Could not start logs-agent: ", err)
+		}
+	} else {
+		log.Info("logs-agent disabled")
+	}
+
 	if err = common.SetupSystemProbeConfig(sysProbeConfFilePath); err != nil {
 		log.Infof("System probe config not found, disabling pulling system probe info in the status page: %v", err)
 	}
@@ -309,20 +322,6 @@ func StartAgent() error {
 	common.SetupAutoConfig(config.Datadog.GetString("confd_path"))
 	// start the autoconfig, this will immediately run any configured check
 	common.StartAutoConfig()
-
-	// start logs-agent
-	// TODO(remy): comment why we're starting it after the AutoConfig system.
-	if config.Datadog.GetBool("logs_enabled") || config.Datadog.GetBool("log_enabled") {
-		if config.Datadog.GetBool("log_enabled") {
-			log.Warn(`"log_enabled" is deprecated, use "logs_enabled" instead`)
-		}
-		err := logs.Start()
-		if err != nil {
-			log.Error("Could not start logs-agent: ", err)
-		}
-	} else {
-		log.Info("logs-agent disabled")
-	}
 
 	// setup the metadata collector
 	common.MetadataScheduler = metadata.NewScheduler(s)
