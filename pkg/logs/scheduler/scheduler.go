@@ -64,6 +64,21 @@ func (s *Scheduler) Schedule(configs []integration.Config) {
 			for _, source := range sources {
 				s.sources.AddSource(source)
 			}
+		default:
+			// invalid integration config
+			continue
+		}
+	}
+
+	for _, config := range configs {
+		if !config.IsLogConfig() {
+			continue
+		}
+		if config.HasFilter(containers.LogsFilter) {
+			log.Debugf("Config %s is filtered out for logs collection, ignoring it", s.configName(config))
+			continue
+		}
+		switch {
 		case s.newService(config):
 			entityType, _, err := s.parseEntity(config.TaggerEntity)
 			if err != nil {
