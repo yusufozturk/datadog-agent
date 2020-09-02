@@ -23,7 +23,12 @@ func unlinkOnNewDiscarder(rs *rules.RuleSet, event *Event, probe *Probe, discard
 		fsEvent := event.Unlink
 		table := "unlink_path_inode_discarders"
 
-		isDiscarded, err := discardParentInode(probe, rs, "unlink", discarder.Value.(string), fsEvent.MountID, fsEvent.Inode, table)
+		value, err := event.GetFieldValue(field)
+		if err != nil {
+			return err
+		}
+
+		isDiscarded, err := discardParentInode(probe, rs, "unlink", value.(string), fsEvent.MountID, fsEvent.Inode, table)
 		if !isDiscarded || err != nil {
 			// not able to discard the parent then only discard the filename
 			_, err = discardInode(probe, fsEvent.MountID, fsEvent.Inode, table)

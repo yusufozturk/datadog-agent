@@ -142,7 +142,7 @@ func (e *FileEvent) ResolveInode(resolvers *Resolvers) string {
 		e.PathnameStr = resolvers.DentryResolver.Resolve(e.MountID, e.Inode)
 		_, mountPath, rootPath, err := resolvers.MountResolver.GetMountPath(e.MountID, e.OverlayNumLower)
 		if err == nil {
-			if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != "/" {
+			if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != PathSeparator {
 				e.PathnameStr = strings.Replace(e.PathnameStr, rootPath, "", 1)
 			}
 			e.PathnameStr = path.Join(mountPath, e.PathnameStr)
@@ -160,7 +160,7 @@ func (e *FileEvent) ResolveContainerPath(resolvers *Resolvers) string {
 		}
 		if len(containerPath) == 0 && len(e.PathnameStr) == 0 {
 			// The container path might be included in the pathname. The container path will be set there.
-			_ = e.ResolveInode(resolvers)
+			e.ResolveInode(resolvers)
 		}
 	}
 	return e.ContainerPath
