@@ -139,9 +139,7 @@ func (l *Launcher) run() {
 				}
 			}
 			// keep the containers that have not found any source yet for next iterations
-			for k, v := range pendingContainers {
-				l.pendingContainers[k] = v
-			}
+			l.pendingContainers = pendingContainers
 		case source := <-l.removedSources:
 			for i, src := range l.activeSources {
 				if src == source {

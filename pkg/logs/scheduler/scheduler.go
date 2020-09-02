@@ -65,22 +65,7 @@ func (s *Scheduler) Schedule(configs []integration.Config) {
 				s.sources.AddSource(source)
 			}
 		case s.newService(config):
-			entityType, _, err := s.parseEntity(config.TaggerEntity)
-			if err != nil {
-				log.Warnf("Invalid service: %v", err)
-				continue
-			}
-			// logs only consider container services
-			if entityType != containers.ContainerEntityName {
-				continue
-			}
-			log.Infof("Received a new service: %v", config.Entity)
-			service, err := s.toService(config)
-			if err != nil {
-				log.Warnf("Invalid service: %v", err)
-				continue
-			}
-			s.services.AddService(service)
+			continue
 		default:
 			// invalid integration config
 			continue
