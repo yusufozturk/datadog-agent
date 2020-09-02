@@ -70,7 +70,7 @@ package :rpm do
   category 'System Environment/Daemons'
   priority 'extra'
   if ENV.has_key?('RPM_GPG_KEY_PASSPHRASE') and not ENV['RPM_GPG_KEY_PASSPHRASE'].empty?
-    gpg_key_name "Datadog, Inc. RPM key (2020-08-27) TESTING (RPM key) <package+rpmkey@datadoghq.com>"
+    gpg_key_name "Datadog, Inc. RPM key (2020-09-01) TESTING (RPM key) <package+rpmkey@datadoghq.com>"
     signing_passphrase "#{ENV['RPM_GPG_KEY_PASSPHRASE']}"
   end
 end
