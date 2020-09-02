@@ -101,6 +101,8 @@ func (l *Launcher) run() {
 	for {
 		select {
 		case service := <-l.addedServices:
+			log.Debug("service := <- l.addedServices")
+			log.Debugf("Service identifier: %s", service.Identifier)
 			// detected a new container running on the host,
 			dockerutil, err := dockerutil.GetDockerUtil()
 			if err != nil {
@@ -117,12 +119,18 @@ func (l *Launcher) run() {
 			switch {
 			case source != nil:
 				// a source matches with the container, start a new tailer
+				log.Debugf("docker.Launcher: service: startTailer: %s, source: %s", service.Identifier, source.Name)
 				l.startTailer(container, source)
 			default:
 				// no source matches with the container but a matching source may not have been
 				// emitted yet or the container may contain an autodiscovery identifier
 				// so it's put in a cache until a matching source is found.
-				l.pendingContainers[service.Identifier] = container
+				if _, exists := l.pendingContainers[service.Identifier]; exists {
+					log.Debugf("docker.Launcher: service: adding service back to the pending containers: %s, already in the list", service.Identifier)
+				} else {
+					log.Debugf("docker.Launcher: service: adding service back to the pending containers: %s, not in the list", service.Identifier)
+				}
+				l.pendingContainers[service.Identifier] = container // TODO(remy): is this a correct ID to put this in?
 			}
 		case source := <-l.addedSources:
 			// detected a new source that has been created either from a configuration file,
@@ -132,9 +140,15 @@ func (l *Launcher) run() {
 			for _, container := range l.pendingContainers {
 				if container.IsMatch(source) {
 					// found a container matching the new source, start a new tailer
+					log.Debugf("docker.Launcher: source: startTailer: %s", source.Name)
 					l.startTailer(container, source)
 				} else {
 					// keep the container in cache until
+					if _, exists := pendingContainers[container.service.Identifier]; exists {
+						log.Debugf("docker.Launcher: source: adding service back to the pending containers: %s, already in the list", container.service.Identifier)
+					} else {
+						log.Debugf("docker.Launcher: source: adding service back to the pending containers: %s, not in the list", container.service.Identifier)
+					}
 					pendingContainers[container.service.Identifier] = container
 				}
 			}
