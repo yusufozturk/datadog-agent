@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // Builder is used to build the status.
@@ -145,12 +146,16 @@ func (b *Builder) groupSourcesByName() map[string][]*config.LogSource {
 	for _, source := range b.sources.GetSources() {
 		if _, exists := sources[source.Name]; !exists {
 			sources[source.Name] = []*config.LogSource{}
+			log.Debug(" !exists ----------------------------------------------------")
+			log.Debugf("adding: %v", source.Name)
+			log.Debugf("source: %v", source)
+			log.Debug("----------------------------------------------------")
 		} else {
-			fmt.Println("----------------------------------------------------")
-			fmt.Println("debug: this source is already existing while building the status:", source.Name)
-			fmt.Println(source)
-			fmt.Println("existing:", sources[source.Name])
-			fmt.Println("----------------------------------------------------")
+			log.Debug(" exists ----------------------------------------------------")
+			log.Debugf("debug: this source is already existing while building the status: %v", source.Name)
+			log.Debugf("source: %v", source)
+			log.Debugf("existing: %v", sources[source.Name])
+			log.Debug("----------------------------------------------------")
 		}
 
 		sources[source.Name] = append(sources[source.Name], source)
