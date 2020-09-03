@@ -36,6 +36,19 @@ else
   install_dir '/opt/datadog-agent'
 end
 
+if debian?
+  # TODO: Add branches for 32-bit kernels if we want to support it
+  if arm?
+    runtime_weak_dependency "linux-headers-arm64 | linux-headers-generic"
+  else
+    runtime_weak_dependency "linux-headers-amd64 | linux-headers-generic"
+  end
+elsif redhat?
+  runtime_weak_dependency "kernel-headers"
+elsif suse?
+  runtime_weak_dependency "kernel-source"
+end
+
 # build_version is computed by an invoke command/function.
 # We can't call it directly from there, we pass it through the environment instead.
 build_version ENV['PACKAGE_VERSION']
