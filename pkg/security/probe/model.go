@@ -672,6 +672,10 @@ type ContainerEvent struct {
 }
 
 func (e *ContainerEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
+	if len(e.GetContainerID()) == 0 {
+		return nil, nil
+	}
+
 	var buf bytes.Buffer
 	buf.WriteRune('{')
 	if id := e.GetContainerID(); len(id) > 0 {
@@ -714,48 +718,76 @@ type ExecEvent struct {
 	SyscallEvent
 	FileEvent
 	ContainerEvent
-	Pid uint32 `field:"pid"`
-}
-
-func (e *ExecEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteRune('{')
-	buf.WriteRune('}')
-
-	return buf.Bytes(), nil
+	Pid uint32
 }
 
 // UnmarshalBinary unmarshals a binary representation of itself
 func (e *ExecEvent) UnmarshalBinary(data []byte) (int, error) {
-	if len(data) < 2 {
+	if len(data) < 84 {
 		return 0, ErrNotEnoughData
 	}
-	e.Pid = byteOrder.Uint32(data[0:4])
 
-	read, err := e.FileEvent.UnmarshalBinary(data[4:])
+	var offset int
+
+	read, err := e.FileEvent.UnmarshalBinary(data)
 	if err != nil {
-		return 4 + read, nil
+		return read, err
+	}
+	offset += read
+
+	read, err = e.ContainerEvent.UnmarshalBinary(data[offset:])
+	if err != nil {
+		return read, nil
+	}
+	offset += read
+
+	e.Pid = byteOrder.Uint32(data[offset : offset+4])
+
+	return offset + 4, nil
+}
+
+// ExitEvent represents a exit event
+type ExitEvent struct {
+	SyscallEvent
+	Pid uint32
+}
+
+// UnmarshalBinary unmarshals a binary representation of itself
+func (e *ExitEvent) UnmarshalBinary(data []byte) (int, error) {
+	if len(data) < 8 {
+		return 0, ErrNotEnoughData
 	}
 
-	read, err = e.ContainerEvent.UnmarshalBinary(data[4:])
-	return 4 + read, err
+	e.Pid = byteOrder.Uint32(data[:4])
+
+	return 8, nil
 }
 
 // ProcessEvent holds the process context of an event
 type ProcessEvent struct {
 	FileEvent
-	Pidns   uint64 `field:"pidns"`
-	Comm    string `field:"name" handler:"ResolveComm,string"`
-	TTYName string `field:"tty_name" handler:"ResolveTTY,string"`
-	Pid     uint32 `field:"pid"`
-	Tid     uint32 `field:"tid"`
-	UID     uint32 `field:"uid"`
-	GID     uint32 `field:"gid"`
-	User    string `field:"user" handler:"ResolveUser,string"`
-	Group   string `field:"group" handler:"ResolveGroup,string"`
+	Pidns       uint64 `field:"pidns"`
+	Comm        string `field:"name" handler:"ResolveComm,string"`
+	TTYName     string `field:"tty_name" handler:"ResolveTTY,string"`
+	Pid         uint32 `field:"pid"`
+	Tid         uint32 `field:"tid"`
+	UID         uint32 `field:"uid"`
+	GID         uint32 `field:"gid"`
+	User        string `field:"user" handler:"ResolveUser,string"`
+	Group       string `field:"group" handler:"ResolveGroup,string"`
+	PathnameStr string `field:"filename" handler:"ResolveProcessPid,string"`
 
 	CommRaw    [16]byte `field:"-"`
 	TTYNameRaw [64]byte `field:"-"`
+}
+
+func (p *ProcessEvent) ResolveProcessPid(resolvers *Resolvers) string {
+	entry := resolvers.ProcessResolver.Resolve(p.Pid)
+	if entry == nil {
+		return ""
+	}
+
+	return entry.Filename
 }
 
 func (p *ProcessEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
@@ -769,7 +801,8 @@ func (p *ProcessEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
 	fmt.Fprintf(&buf, `"pid":%d,`, p.Pid)
 	fmt.Fprintf(&buf, `"tid":%d,`, p.Tid)
 	fmt.Fprintf(&buf, `"uid":%d,`, p.UID)
-	fmt.Fprintf(&buf, `"gid":%d`, p.GID)
+	fmt.Fprintf(&buf, `"gid":%d,`, p.GID)
+	fmt.Fprintf(&buf, `"filename":"%s"`, p.ResolveProcessPid(resolvers))
 	buf.WriteRune('}')
 
 	return buf.Bytes(), nil
@@ -862,6 +895,7 @@ type Event struct {
 	Mount       MountEvent     `yaml:"mount" field:"-"`
 	Umount      UmountEvent    `yaml:"umount" field:"-"`
 	Exec        ExecEvent      `yaml:"exec" field:"-"`
+	Exit        ExitEvent      `yaml:"exit" field:"-"`
 
 	resolvers *Resolvers `field:"-"`
 }
@@ -887,19 +921,7 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 	buf.WriteRune('{')
 	fmt.Fprintf(&buf, `"id":"%s",`, eventID)
 
-	entries := []eventMarshaler{
-		{
-			field:      "process",
-			marshalFnc: e.Process.marshalJSON,
-		},
-	}
-
-	if len(e.Container.GetContainerID()) > 0 {
-		entries = append(entries, eventMarshaler{
-			field:      "container",
-			marshalFnc: e.Container.marshalJSON,
-		})
-	}
+	var entries []eventMarshaler
 
 	eventType := EventType(e.Type)
 
@@ -917,6 +939,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 				marshalFnc: eventMarshalJSON(&e.Chmod.SyscallEvent),
 			},
 			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
+			},
+			eventMarshaler{
 				field:      "file",
 				marshalFnc: e.Chmod.marshalJSON,
 			})
@@ -925,6 +955,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 			eventMarshaler{
 				field:      "syscall",
 				marshalFnc: eventMarshalJSON(&e.Chown.SyscallEvent),
+			},
+			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
 			},
 			eventMarshaler{
 				field:      "file",
@@ -937,6 +975,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 				marshalFnc: eventMarshalJSON(&e.Open.SyscallEvent),
 			},
 			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
+			},
+			eventMarshaler{
 				field:      "file",
 				marshalFnc: e.Open.marshalJSON,
 			})
@@ -945,6 +991,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 			eventMarshaler{
 				field:      "syscall",
 				marshalFnc: eventMarshalJSON(&e.Mkdir.SyscallEvent),
+			},
+			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
 			},
 			eventMarshaler{
 				field:      "file",
@@ -957,6 +1011,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 				marshalFnc: eventMarshalJSON(&e.Rmdir.SyscallEvent),
 			},
 			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
+			},
+			eventMarshaler{
 				field:      "file",
 				marshalFnc: e.Rmdir.marshalJSON,
 			})
@@ -967,6 +1029,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 				marshalFnc: eventMarshalJSON(&e.Unlink.SyscallEvent),
 			},
 			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
+			},
+			eventMarshaler{
 				field:      "file",
 				marshalFnc: e.Unlink.marshalJSON,
 			})
@@ -975,6 +1045,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 			eventMarshaler{
 				field:      "syscall",
 				marshalFnc: eventMarshalJSON(&e.Rename.SyscallEvent),
+			},
+			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
 			},
 			eventMarshaler{
 				field:      "old",
@@ -991,6 +1069,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 				marshalFnc: eventMarshalJSON(&e.Utimes.SyscallEvent),
 			},
 			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
+			},
+			eventMarshaler{
 				field:      "file",
 				marshalFnc: e.Utimes.marshalJSON,
 			})
@@ -999,6 +1085,14 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 			eventMarshaler{
 				field:      "syscall",
 				marshalFnc: eventMarshalJSON(&e.Link.SyscallEvent),
+			},
+			eventMarshaler{
+				field:      "process",
+				marshalFnc: e.Process.marshalJSON,
+			},
+			eventMarshaler{
+				field:      "container",
+				marshalFnc: e.Container.marshalJSON,
 			},
 			eventMarshaler{
 				field:      "source",
@@ -1092,9 +1186,7 @@ func (e *Event) UnmarshalBinary(data []byte) (int, error) {
 		return 0, ErrNotEnoughData
 	}
 	e.Type = byteOrder.Uint64(data[0:8])
-
-	n, err := unmarshalBinary(data[8:], &e.Process, &e.Container)
-	return n + 8, err
+	return 8, nil
 }
 
 // NewEvent returns a new event
