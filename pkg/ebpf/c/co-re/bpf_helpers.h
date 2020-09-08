@@ -17,6 +17,16 @@
 #define __type(name, val) typeof(val) *name
 #define __array(name, val) typeof(val) *name[]
 
+/* llvm builtin functions that eBPF C program may use to
+ * emit BPF_LD_ABS and BPF_LD_IND instructions
+ */
+unsigned long long load_byte(void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.byte");
+unsigned long long load_half(void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.half");
+unsigned long long load_word(void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.word");
+
 /* Macro to output debug logs to /sys/kernel/debug/tracing/trace_pipe
  */
 #if defined(DEBUG)
@@ -56,7 +66,10 @@
  * Helper macro to manipulate data structures
  */
 #ifndef offsetof
-#define offsetof(TYPE, MEMBER)	((unsigned long)&((TYPE *)0)->MEMBER)
+// using this version of offsetof in combination with load_(half|word|byte)
+// triggers a kernel verifier bug where it clobbers the register containing the offset
+//#define offsetof(TYPE, MEMBER)	((unsigned long)&((TYPE *)0)->MEMBER)
+#define offsetof(TYPE, MEMBER)	__builtin_offsetof(TYPE, MEMBER)
 #endif
 #ifndef container_of
 #define container_of(ptr, type, member)				\

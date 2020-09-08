@@ -92,13 +92,16 @@ func NewTracer(config *Config) (*Tracer, error) {
 		return nil, fmt.Errorf("%s: %s", "system-probe unsupported", msg)
 	}
 
-	buf, err := bytecode.ReadBPFModule(config.BPFDir, config.BPFDebug)
+	buf, err := bytecode.ReadBPFModule(config.BPFDir, config.BPFDebug, config.UseCORE)
 	if err != nil {
 		return nil, fmt.Errorf("could not read bpf module: %s", err)
 	}
-	offsetBuf, err := bytecode.ReadOffsetBPFModule(config.BPFDir, config.BPFDebug)
-	if err != nil {
-		return nil, fmt.Errorf("could not read offset bpf module: %s", err)
+	var offsetBuf bytecode.AssetReader
+	if !config.UseCORE {
+		offsetBuf, err = bytecode.ReadOffsetBPFModule(config.BPFDir, config.BPFDebug)
+		if err != nil {
+			return nil, fmt.Errorf("could not read offset bpf module: %s", err)
+		}
 	}
 
 	// check if current platform is using old kernel API because it affects what kprobe are we going to enable
@@ -132,9 +135,11 @@ func NewTracer(config *Config) (*Tracer, error) {
 			string(bytecode.UdpPortBindingsMap): {Type: ebpf.Hash, MaxEntries: uint32(config.MaxTrackedConnections), EditorFlag: manager.EditMaxEntries},
 		},
 	}
-	mgrOptions.ConstantEditors, err = runOffsetGuessing(config, offsetBuf)
-	if err != nil {
-		return nil, fmt.Errorf("error guessing offsets: %s", err)
+	if !config.UseCORE {
+		mgrOptions.ConstantEditors, err = runOffsetGuessing(config, offsetBuf)
+		if err != nil {
+			return nil, fmt.Errorf("error guessing offsets: %s", err)
+		}
 	}
 
 	closedChannelSize := defaultClosedChannelSize
@@ -159,6 +164,12 @@ func NewTracer(config *Config) (*Tracer, error) {
 				Value: uint64(1),
 			})
 		}
+	}
+	if config.UseCORE && config.CollectIPv6Conns {
+		mgrOptions.ConstantEditors = append(mgrOptions.ConstantEditors, manager.ConstantEditor{
+			Name:  "is_ipv6_enabled",
+			Value: uint64(1),
+		})
 	}
 
 	// exclude all non-enabled probes to ensure we don't run into problems with unsupported probe types

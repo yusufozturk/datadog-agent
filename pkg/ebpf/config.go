@@ -101,6 +101,8 @@ type Config struct {
 
 	// EnableMonotonicCount (Windows only) determines if we will calculate send/recv bytes of connections with headers and retransmits
 	EnableMonotonicCount bool
+
+	UseCORE bool
 }
 
 // NewDefaultConfig enables traffic collection for all connection types
@@ -131,5 +133,6 @@ func NewDefaultConfig() *Config {
 		DNSTimeout:           15 * time.Second,
 		OffsetGuessThreshold: 400,
 		EnableMonotonicCount: false,
+		UseCORE:              true,
 	}
 }
