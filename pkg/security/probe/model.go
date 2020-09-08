@@ -24,6 +24,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
+	"github.com/DataDog/datadog-agent/pkg/security/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -138,16 +139,23 @@ type FileEvent struct {
 
 // ResolveInode resolves the inode to a full path
 func (e *FileEvent) ResolveInode(resolvers *Resolvers) string {
-	if len(e.PathnameStr) == 0 {
-		e.PathnameStr = resolvers.DentryResolver.Resolve(e.MountID, e.Inode)
-		_, mountPath, rootPath, err := resolvers.MountResolver.GetMountPath(e.MountID, e.OverlayNumLower)
-		if err == nil {
-			if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != PathSeparator {
-				e.PathnameStr = strings.Replace(e.PathnameStr, rootPath, "", 1)
-			}
-			e.PathnameStr = path.Join(mountPath, e.PathnameStr)
-		}
+	if len(e.PathnameStr) != 0 {
+		return e.PathnameStr
 	}
+
+	e.PathnameStr = resolvers.DentryResolver.Resolve(e.MountID, e.Inode)
+	if e.PathnameStr == dentryPathKeyNotFound {
+		return e.PathnameStr
+	}
+
+	_, mountPath, rootPath, err := resolvers.MountResolver.GetMountPath(e.MountID, e.OverlayNumLower)
+	if err == nil {
+		if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != PathSeparator {
+			e.PathnameStr = strings.Replace(e.PathnameStr, rootPath, "", 1)
+		}
+		e.PathnameStr = path.Join(mountPath, e.PathnameStr)
+	}
+
 	return e.PathnameStr
 }
 
@@ -208,6 +216,15 @@ func unmarshalBinary(data []byte, binaryUnmarshalers ...BinaryUnmarshaler) (int,
 		}
 	}
 	return read, nil
+}
+
+// Bytes returns a binary representation of itself
+func (e *FileEvent) Bytes() []byte {
+	b := make([]byte, 16)
+	byteOrder.PutUint64(b[0:8], e.Inode)
+	byteOrder.PutUint32(b[8:12], e.MountID)
+	byteOrder.PutUint32(b[12:16], uint32(e.OverlayNumLower))
+	return b
 }
 
 // ChmodEvent represents a chmod event
@@ -695,6 +712,11 @@ func (e *ContainerEvent) UnmarshalBinary(data []byte) (int, error) {
 		return 0, err
 	}
 	return 64, nil
+}
+
+// Bytes returns a binary representation of itself
+func (e *ContainerEvent) Bytes() []byte {
+	return utils.ContainerID(e.ID).Bytes()
 }
 
 // ResolveContainerID resolves the container ID of the event
