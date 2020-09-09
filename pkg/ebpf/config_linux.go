@@ -20,7 +20,7 @@ func (c *Config) EnabledProbes(pre410Kernel bool) (map[bytecode.ProbeName]struct
 
 	if c.CollectTCPConns {
 		if pre410Kernel {
-			//enabled[bytecode.TCPSendMsgPre410] = struct{}{}
+			enabled[bytecode.TCPSendMsgPre410] = struct{}{}
 		} else {
 			enabled[bytecode.TCPSendMsg] = struct{}{}
 		}
@@ -42,8 +42,8 @@ func (c *Config) EnabledProbes(pre410Kernel bool) (map[bytecode.ProbeName]struct
 		enabled[bytecode.UDPDestroySock] = struct{}{}
 
 		if pre410Kernel {
-			//enabled[bytecode.UDPSendMsgPre410] = struct{}{}
-			//enabled[bytecode.UDPRecvMsgPre410] = struct{}{}
+			enabled[bytecode.UDPSendMsgPre410] = struct{}{}
+			enabled[bytecode.UDPRecvMsgPre410] = struct{}{}
 		} else {
 			enabled[bytecode.UDPRecvMsg] = struct{}{}
 			enabled[bytecode.UDPSendMsg] = struct{}{}

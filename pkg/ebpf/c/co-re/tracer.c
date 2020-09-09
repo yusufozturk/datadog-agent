@@ -434,6 +434,20 @@ int BPF_KPROBE(kprobe__tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t 
     return handle_message(&t, size, 0);
 }
 
+SEC("kprobe/tcp_sendmsg/pre_4_1_0")
+int BPF_KPROBE(kprobe__tcp_sendmsg__pre_4_1_0, struct kiocb *iocb, struct sock *sk, struct msghdr *msg, size_t size) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    log_debug("kprobe/tcp_sendmsg/pre_4_1_0: pid_tgid: %llu, size: %lu\n", pid_tgid, size);
+
+    conn_tuple_t t = {};
+    if (!read_conn_tuple(&t, sk, pid_tgid, CONN_TYPE_TCP)) {
+        return 0;
+    }
+
+    handle_tcp_stats(&t, sk);
+    return handle_message(&t, size, 0);
+}
+
 SEC("kretprobe/tcp_sendmsg")
 int BPF_KRETPROBE(kretprobe__tcp_sendmsg, int ret) {
     log_debug("kretprobe/tcp_sendmsg: return: %d\n", ret);
@@ -519,6 +533,23 @@ int BPF_KPROBE(kprobe__udp_sendmsg, struct sock *sk, struct msghdr *msg, size_t 
     return 0;
 }
 
+SEC("kprobe/udp_sendmsg/pre_4_1_0")
+int BPF_KPROBE(kprobe__udp_sendmsg__pre_4_1_0, struct kiocb *iocb, struct sock *sk, struct msghdr *msg, size_t size) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+
+    conn_tuple_t t = {};
+    if (!read_conn_tuple(&t, sk, pid_tgid, CONN_TYPE_UDP)) {
+        increment_telemetry_count(udp_send_missed);
+        return 0;
+    }
+
+    log_debug("kprobe/udp_sendmsg/pre_4_1_0: pid_tgid: %llu, size: %lu\n", pid_tgid, size);
+    handle_message(&t, size, 0);
+    increment_telemetry_count(udp_send_processed);
+
+    return 0;
+}
+
 // We can only get the accurate number of copied bytes from the return value, so we pass our
 // sock* pointer from the kprobe to the kretprobe via a map (udp_recv_sock) to get all required info
 //
@@ -533,6 +564,17 @@ int BPF_KPROBE(kprobe__udp_recvmsg, struct sock *sk) {
     // Store pointer to the socket using the pid/tgid
     bpf_map_update_elem(&udp_recv_sock, &pid_tgid, &sk, BPF_ANY);
     log_debug("kprobe/udp_recvmsg: pid_tgid: %llu\n", pid_tgid);
+
+    return 0;
+}
+
+SEC("kprobe/udp_recvmsg/pre_4_1_0")
+int BPF_KPROBE(kprobe__udp_recvmsg_pre_4_1_0, struct kiocb *iocb, struct sock *sk) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+
+    // Store pointer to the socket using the pid/tgid
+    bpf_map_update_elem(&udp_recv_sock, &pid_tgid, &sk, BPF_ANY);
+    log_debug("kprobe/udp_recvmsg/pre_4_1_0: pid_tgid: %llu\n", pid_tgid);
 
     return 0;
 }
