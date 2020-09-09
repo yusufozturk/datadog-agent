@@ -170,17 +170,19 @@ def build(
         "go_build_tags": " ".join(build_tags),
         "agent_bin": os.path.join(BIN_PATH, bin_name("agent", android=False)),
         "gcflags": gcflags,
-        "ldflags": ldflags,
+        "ldflags": ldflags + " -v",
         "REPO_PATH": REPO_PATH,
         "flavor": "iot-agent" if iot else "agent",
     }
+    
+    print (cmd.format(**args))
     ctx.run(cmd.format(**args), env=env)
 
     # Remove cross-compiling bits to render config
     env.update(
         {"GOOS": "", "GOARCH": "",}
     )
-
+    print ("OK")
     # Render the Agent configuration file template
     cmd = "go run {go_file} {build_type} {template_file} {output_file}"
 
@@ -196,7 +198,7 @@ def build(
         "template_file": "./pkg/config/config_template.yaml",
         "output_file": "./cmd/agent/dist/datadog.yaml",
     }
-
+    print (cmd.format(**args))
     ctx.run(cmd.format(**args), env=env)
 
     # On Linux and MacOS, render the system-probe configuration file template
