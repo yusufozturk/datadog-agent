@@ -6,8 +6,17 @@
 
 enum telemetry_counter{tcp_sent_miscounts, missed_tcp_close, udp_send_processed, udp_send_missed};
 
-static volatile const __u64 is_ipv6_enabled = 0;
-static volatile const __u64 dns_stats_enabled = 0;
+static __always_inline bool is_ipv6_enabled() {
+    __u64 val = 0;
+    LOAD_CONSTANT("ipv6_enabled", val);
+    return val == TRACER_IPV6_ENABLED;
+}
+
+static __always_inline bool dns_stats_enabled() {
+    __u64 val = 0;
+    LOAD_CONSTANT("dns_stats_enabled", val);
+    return val == 1;
+}
 
 /* This is a key/value store with the keys being a conn_tuple_t for send & recv calls
  * and the values being conn_stats_ts_t *.
@@ -165,14 +174,15 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     t->daddr_l = 0;
     t->sport = 0;
     t->dport = 0;
+    t->netns = 0;
     t->pid = pid_tgid >> 32;
     t->metadata = type;
 
     // Retrieve addresses
     if (check_family(skp, AF_INET)) {
         t->metadata |= CONN_V4;
-        t->saddr_l = BPF_CORE_READ(skp, __sk_common.skc_rcv_saddr);
-        t->daddr_l = BPF_CORE_READ(skp, __sk_common.skc_daddr);
+        BPF_CORE_READ_INTO(&t->saddr_l, skp, __sk_common.skc_rcv_saddr);
+        BPF_CORE_READ_INTO(&t->daddr_l, skp, __sk_common.skc_daddr);
 
         if (!t->saddr_l || !t->daddr_l) {
             log_debug("ERR(read_conn_tuple.v4): src/dst addr not set src:%llu,dst:%llu\n", t->saddr_l, t->daddr_l);
@@ -220,8 +230,8 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     }
 
     // Retrieve ports
-    t->sport = BPF_CORE_READ((struct inet_sock *)skp, inet_sport);
-    t->dport = BPF_CORE_READ(skp, __sk_common.skc_dport);
+    BPF_CORE_READ_INTO(&t->sport, (struct inet_sock *)skp, inet_sport);
+    BPF_CORE_READ_INTO(&t->dport, skp, __sk_common.skc_dport);
     if (t->sport == 0 || t->dport == 0) {
         log_debug("ERR(read_conn_tuple.v4): src/dst port not set: src:%u, dst:%u\n", bpf_ntohs(t->sport), bpf_ntohs(t->dport));
         return 0;
@@ -232,7 +242,7 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     t->dport = bpf_ntohs(t->dport);
 
     // Retrieve network namespace id
-    t->netns = BPF_CORE_READ(skp, __sk_common.skc_net.net, ns.inum);
+    BPF_CORE_READ_INTO(&t->netns, skp, __sk_common.skc_net.net, ns.inum);
 
     return 1;
 }
@@ -404,8 +414,10 @@ static __always_inline int handle_retransmit(struct sock *sk) {
 }
 
 static __always_inline void handle_tcp_stats(conn_tuple_t* t, struct sock *sk) {
-    u32 rtt = BPF_CORE_READ((struct tcp_sock *)sk, srtt_us);
-    u32 rtt_var = BPF_CORE_READ((struct tcp_sock *)sk, mdev_us);
+    u32 rtt = 0;
+    u32 rtt_var = 0;
+    BPF_CORE_READ_INTO(&rtt, (struct tcp_sock *)sk, srtt_us);
+    BPF_CORE_READ_INTO(&rtt_var, (struct tcp_sock *)sk, mdev_us);
 
     tcp_stats_t stats = { .retransmits = 0, .rtt = rtt, .rtt_var = rtt_var };
     update_tcp_stats(t, stats);
@@ -459,7 +471,8 @@ int BPF_KPROBE(kprobe__tcp_close, struct sock *sk, long timeout) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
 #if defined(DEBUG)
     // Get network namespace id
-    u32 net_ns_inum = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
+    u32 net_ns_inum = 0;
+    BPF_CORE_READ_INTO(&net_ns_inum, sk, __sk_common.skc_net.net, ns.inum);
     log_debug("kprobe/tcp_close: pid_tgid: %llu, ns: %u\n", pid_tgid, net_ns_inum);
 #endif
 
@@ -588,7 +601,8 @@ int BPF_KRETPROBE(kretprobe__inet_csk_accept, struct sock *newsk) {
         return 0;
     }
 
-    __u16 lport = BPF_CORE_READ(newsk, __sk_common.skc_dport);
+    __u16 lport = 0;
+    BPF_CORE_READ_INTO(&lport, newsk, __sk_common.skc_dport);
     if (lport == 0) {
         return 0;
     }
@@ -611,7 +625,8 @@ int BPF_KPROBE(kprobe__tcp_v4_destroy_sock, struct sock* sk) {
         return 0;
     }
 
-    __u16 lport = BPF_CORE_READ(sk, __sk_common.skc_dport);
+    __u16 lport = 0;
+    BPF_CORE_READ_INTO(&lport, sk, __sk_common.skc_dport);
     if (lport == 0) {
         log_debug("ERR(tcp_v4_destroy_sock): lport is 0 \n");
         return 0;
@@ -636,7 +651,8 @@ int BPF_KPROBE(kprobe__udp_destroy_sock, struct sock* sk) {
     }
 
     // get the port for the current sock
-    __u16 lport = BPF_CORE_READ((struct inet_sock *)sk, inet_sport);
+    __u16 lport = 0;
+    BPF_CORE_READ_INTO(&lport, (struct inet_sock *)sk, inet_sport);
     lport = bpf_ntohs(lport);
 
     if (lport == 0) {
@@ -681,7 +697,8 @@ static __always_inline int sys_enter_bind(__u64 fd, struct sockaddr* addr) {
     }
 
     // sockaddr is part of the syscall ABI, so we can hardcode the offset of 2 to find the port.
-    u16 sin_port = BPF_CORE_READ((struct sockaddr_in *)addr, sin_port);
+    u16 sin_port = 0;
+    BPF_CORE_READ_INTO(&sin_port, (struct sockaddr_in *)addr, sin_port);
     sin_port = bpf_ntohs(sin_port);
 
     // write to pending_binds so the retprobe knows we can mark this as binding.
@@ -904,7 +921,7 @@ int socket__dns_filter(struct __sk_buff* skb) {
     __u16 src_port = load_half(skb, ETH_HLEN + ip_hdr_size + src_port_offset);
     __u16 dst_port = load_half(skb, ETH_HLEN + ip_hdr_size + dst_port_offset);
 
-    if (src_port != 53 && (!dns_stats_enabled || dst_port != 53))
+    if (src_port != 53 && (!dns_stats_enabled() || dst_port != 53))
         return 0;
 
     return -1;
