@@ -162,11 +162,6 @@ static __always_inline bool is_ipv4_mapped_ipv6(u64 saddr_h, u64 saddr_l, u64 da
 #endif
 }
 
-static __always_inline bool check_family(struct sock* sk, u16 expected_family) {
-    u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
-    return family == expected_family;
-}
-
 static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u64 pid_tgid, metadata_mask_t type) {
     t->saddr_h = 0;
     t->saddr_l = 0;
@@ -178,41 +173,41 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     t->pid = pid_tgid >> 32;
     t->metadata = type;
 
+    u16 family = 0;
+    BPF_CORE_READ_INTO(&family, skp, __sk_common.skc_family);
+
     // Retrieve addresses
-    if (check_family(skp, AF_INET)) {
+    if (family == AF_INET) {
         t->metadata |= CONN_V4;
         BPF_CORE_READ_INTO(&t->saddr_l, skp, __sk_common.skc_rcv_saddr);
         BPF_CORE_READ_INTO(&t->daddr_l, skp, __sk_common.skc_daddr);
 
         if (!t->saddr_l || !t->daddr_l) {
-            log_debug("ERR(read_conn_tuple.v4): src/dst addr not set src:%llu,dst:%llu\n", t->saddr_l, t->daddr_l);
+            log_debug("ERR(read_conn_tuple.v4): src/dst addr not set src=%llu, dst=%llu\n", t->saddr_l, t->daddr_l);
             return 0;
         }
-    } else if (is_ipv6_enabled && check_family(skp, AF_INET6)) {
+    } else if (is_ipv6_enabled() && family == AF_INET6) {
         // TODO cleanup? having it split on 64 bits is not nice for kernel reads
-        __be32 *v6src = BPF_CORE_READ(skp, __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-        __be32 *v6dst = BPF_CORE_READ(skp, __sk_common.skc_v6_daddr.in6_u.u6_addr32);
+        __be32 v6src[4] = {};
+        __be32 v6dst[4] = {};
+        BPF_CORE_READ_INTO(&v6src, skp, __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+        BPF_CORE_READ_INTO(&v6dst, skp, __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 
         bpf_probe_read(&t->saddr_h, sizeof(t->saddr_h), v6src);
-        bpf_probe_read(&t->saddr_l, sizeof(t->saddr_l), v6src + sizeof(u64));
+        bpf_probe_read(&t->saddr_l, sizeof(t->saddr_l), v6src + 2);
         bpf_probe_read(&t->daddr_h, sizeof(t->daddr_h), v6dst);
-        bpf_probe_read(&t->daddr_l, sizeof(t->daddr_l), v6dst + sizeof(u64));
-
-//        BPF_CORE_READ_INTO(&t->saddr_h, skp, __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-//        BPF_CORE_READ_INTO(&t->saddr_l, skp, &(__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32[2]));
-//        BPF_CORE_READ_INTO(&t->daddr_h, skp, __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-//        BPF_CORE_READ_INTO(&t->daddr_l, skp, &(__sk_common.skc_v6_daddr.in6_u.u6_addr32[2]));
+        bpf_probe_read(&t->daddr_l, sizeof(t->daddr_l), v6dst + 2);
 
         // We can only pass 4 args to bpf_trace_printk
         // so split those 2 statements to be able to log everything
         if (!(t->saddr_h || t->saddr_l)) {
-            log_debug("ERR(read_conn_tuple.v6): src addr not set: src_l:%llu,src_h:%llu\n",
+            log_debug("ERR(read_conn_tuple.v6): src addr not set: src_l=%llu, src_h=%llu\n",
                 t->saddr_l, t->saddr_h);
             return 0;
         }
 
         if (!(t->daddr_h || t->daddr_l)) {
-            log_debug("ERR(read_conn_tuple.v6): dst addr not set: dst_l:%llu,dst_h:%llu\n",
+            log_debug("ERR(read_conn_tuple.v6): dst addr not set: dst_l=%llu, dst_h=%llu\n",
                 t->daddr_l, t->daddr_h);
             return 0;
         }
@@ -227,13 +222,15 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
         } else {
             t->metadata |= CONN_V6;
         }
+    } else {
+        log_debug("ERR(read_conn_tuple) unknown family tid=%llu family=%u ipv6_enabled=%d\n", pid_tgid, family, is_ipv6_enabled());
     }
 
     // Retrieve ports
     BPF_CORE_READ_INTO(&t->sport, (struct inet_sock *)skp, inet_sport);
     BPF_CORE_READ_INTO(&t->dport, skp, __sk_common.skc_dport);
     if (t->sport == 0 || t->dport == 0) {
-        log_debug("ERR(read_conn_tuple.v4): src/dst port not set: src:%u, dst:%u\n", bpf_ntohs(t->sport), bpf_ntohs(t->dport));
+        log_debug("ERR(read_conn_tuple): src/dst port not set: src:%u, dst:%u\n", bpf_ntohs(t->sport), bpf_ntohs(t->dport));
         return 0;
     }
 

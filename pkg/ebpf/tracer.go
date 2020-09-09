@@ -167,7 +167,7 @@ func NewTracer(config *Config) (*Tracer, error) {
 	}
 	if config.UseCORE && config.CollectIPv6Conns {
 		mgrOptions.ConstantEditors = append(mgrOptions.ConstantEditors, manager.ConstantEditor{
-			Name:  "is_ipv6_enabled",
+			Name:  "ipv6_enabled",
 			Value: uint64(1),
 		})
 	}

@@ -679,7 +679,6 @@ func TestTCPShortlived(t *testing.T) {
 }
 
 func TestTCPOverIPv6(t *testing.T) {
-	t.SkipNow()
 	config := NewDefaultConfig()
 	config.CollectIPv6Conns = true
 
@@ -726,7 +725,7 @@ func TestTCPOverIPv6(t *testing.T) {
 	connections := getConnections(t, tr)
 
 	conn, ok := findConnection(c.LocalAddr(), c.RemoteAddr(), connections)
-	require.True(t, ok)
+	require.True(t, ok, "connection %s => %s missing from %v", c.LocalAddr(), c.RemoteAddr(), connections)
 	assert.Equal(t, clientMessageSize, int(conn.MonotonicSentBytes))
 	assert.Equal(t, serverMessageSize, int(conn.MonotonicRecvBytes))
 	assert.Equal(t, 0, int(conn.MonotonicRetransmits))
