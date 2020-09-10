@@ -306,7 +306,7 @@ func (e *ChownEvent) UnmarshalBinary(data []byte) (int, error) {
 
 // SetXAttrEvent represents an extended attributes event
 type SetXAttrEvent struct {
-	BaseEvent
+	SyscallEvent
 	FileEvent
 	Namespace string `field:"namespace" handler:"GetNamespace,string"`
 	Name      string `field:"name" handler:"GetName,string"`
@@ -331,7 +331,7 @@ func (e *SetXAttrEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
 
 // UnmarshalBinary unmarshals a binary representation of itself
 func (e *SetXAttrEvent) UnmarshalBinary(data []byte) (int, error) {
-	n, err := unmarshalBinary(data, &e.BaseEvent, &e.FileEvent)
+	n, err := unmarshalBinary(data, &e.SyscallEvent, &e.FileEvent)
 	if err != nil {
 		return n, err
 	}
@@ -566,7 +566,7 @@ func (e *LinkEvent) UnmarshalBinary(data []byte) (int, error) {
 
 // MountEvent represents a mount event
 type MountEvent struct {
-	BaseEvent
+	SyscallEvent
 	NewMountID    uint32
 	NewGroupID    uint32
 	NewDevice     uint32
@@ -601,7 +601,7 @@ func (e *MountEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
 
 // UnmarshalBinary unmarshals a binary representation of itself
 func (e *MountEvent) UnmarshalBinary(data []byte) (int, error) {
-	n, err := unmarshalBinary(data, &e.BaseEvent)
+	n, err := unmarshalBinary(data, &e.SyscallEvent)
 	if err != nil {
 		return n, err
 	}
@@ -652,7 +652,7 @@ func (e *MountEvent) GetFSType() string {
 
 // UmountEvent represents an umount event
 type UmountEvent struct {
-	BaseEvent
+	SyscallEvent
 	MountID uint32
 }
 
@@ -667,7 +667,7 @@ func (e *UmountEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
 
 // UnmarshalBinary unmarshals a binary representation of itself
 func (e *UmountEvent) UnmarshalBinary(data []byte) (int, error) {
-	n, err := unmarshalBinary(data, &e.BaseEvent)
+	n, err := unmarshalBinary(data, &e.SyscallEvent)
 	if err != nil {
 		return n, err
 	}
@@ -804,12 +804,16 @@ type ProcessEvent struct {
 }
 
 func (p *ProcessEvent) ResolveProcessPid(resolvers *Resolvers) string {
-	entry := resolvers.ProcessResolver.Resolve(p.Pid)
-	if entry == nil {
-		return ""
+	if p.PathnameStr == "" {
+		entry := resolvers.ProcessResolver.Resolve(p.Pid)
+		if entry == nil {
+			return ""
+		}
+
+		p.PathnameStr = entry.Filename
 	}
 
-	return entry.Filename
+	return p.PathnameStr
 }
 
 func (p *ProcessEvent) marshalJSON(resolvers *Resolvers) ([]byte, error) {
@@ -941,7 +945,7 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 
 	var buf bytes.Buffer
 	buf.WriteRune('{')
-	fmt.Fprintf(&buf, `"id":"%s",`, eventID)
+	fmt.Fprintf(&buf, `"id":"%s"`, eventID)
 
 	var entries []eventMarshaler
 
@@ -1128,7 +1132,7 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 		entries = append(entries,
 			eventMarshaler{
 				field:      "syscall",
-				marshalFnc: eventMarshalJSON(&e.Mount.BaseEvent),
+				marshalFnc: eventMarshalJSON(&e.Mount.SyscallEvent),
 			},
 			eventMarshaler{
 				field:      "mount",
@@ -1138,7 +1142,7 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 		entries = append(entries,
 			eventMarshaler{
 				field:      "syscall",
-				marshalFnc: eventMarshalJSON(&e.Umount.BaseEvent),
+				marshalFnc: eventMarshalJSON(&e.Umount.SyscallEvent),
 			},
 			eventMarshaler{
 				field:      "umount",
@@ -1148,7 +1152,7 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 		entries = append(entries,
 			eventMarshaler{
 				field:      "syscall",
-				marshalFnc: eventMarshalJSON(&e.SetXAttr.BaseEvent),
+				marshalFnc: eventMarshalJSON(&e.SetXAttr.SyscallEvent),
 			},
 			eventMarshaler{
 				field:      "file",
@@ -1158,7 +1162,7 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 		entries = append(entries,
 			eventMarshaler{
 				field:      "syscall",
-				marshalFnc: eventMarshalJSON(&e.RemoveXAttr.BaseEvent),
+				marshalFnc: eventMarshalJSON(&e.RemoveXAttr.SyscallEvent),
 			},
 			eventMarshaler{
 				field:      "file",
@@ -1166,19 +1170,15 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 			})
 	}
 
-	var prev bool
 	for _, entry := range entries {
 		d, err := entry.marshalFnc(e.resolvers)
 		if err != nil {
 			return nil, errors.Wrapf(err, "in %s", entry.field)
 		}
 		if d != nil {
-			if prev {
-				buf.WriteRune(',')
-			}
+			buf.WriteRune(',')
 			buf.WriteString(`"` + entry.field + `":`)
 			buf.Write(d)
-			prev = true
 		}
 	}
 	buf.WriteRune('}')
