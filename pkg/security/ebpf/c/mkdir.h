@@ -77,10 +77,8 @@ int __attribute__((always_inline)) trace__sys_mkdir_ret(struct pt_regs *ctx) {
     syscall->mkdir.path_key.ino = get_dentry_ino(syscall->mkdir.dentry);
     struct mkdir_event_t event = {
         .event.type = EVENT_MKDIR,
-        .syscall = {
-            .retval = retval,
-            .timestamp = bpf_ktime_get_ns(),
-        },
+        .event.timestamp = bpf_ktime_get_ns(),
+        .syscall.retval = retval,
         .file = {
             .inode = syscall->mkdir.path_key.ino,
             .mount_id = syscall->mkdir.path_key.mount_id,

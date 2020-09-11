@@ -69,10 +69,8 @@ int __attribute__((always_inline)) trace__sys_rename_ret(struct pt_regs *ctx) {
     syscall->rename.target_key.ino = get_dentry_ino(syscall->rename.src_dentry);
     struct rename_event_t event = {
         .event.type = EVENT_RENAME,
-        .syscall = {
-            .retval = retval,
-            .timestamp = bpf_ktime_get_ns(),
-        },
+        .event.timestamp = bpf_ktime_get_ns(),
+        .syscall.retval = retval,
         .old = {
             .inode = syscall->rename.src_key.ino,
             .mount_id = syscall->rename.src_key.mount_id,

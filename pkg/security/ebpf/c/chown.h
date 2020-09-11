@@ -95,10 +95,8 @@ int __attribute__((always_inline)) trace__sys_chown_ret(struct pt_regs *ctx) {
 
     struct chown_event_t event = {
         .event.type = EVENT_CHOWN,
-        .syscall = {
-            .retval = retval,
-            .timestamp = bpf_ktime_get_ns(),
-        },
+        .event.timestamp = bpf_ktime_get_ns(),
+        .syscall.retval = retval,
         .file = {
             .inode = syscall->setattr.path_key.ino,
             .mount_id = syscall->setattr.path_key.mount_id,

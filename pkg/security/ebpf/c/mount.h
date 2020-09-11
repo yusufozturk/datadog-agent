@@ -84,10 +84,8 @@ SYSCALL_KRETPROBE(mount) {
 
     struct mount_event_t event = {
         .event.type = EVENT_MOUNT,
-        .syscall = {
-            .retval = PT_REGS_RC(ctx),
-            .timestamp = bpf_ktime_get_ns(),
-        },
+        .event.timestamp = bpf_ktime_get_ns(),
+        .syscall .retval = PT_REGS_RC(ctx),
         .new_mount_id = get_mount_mount_id(syscall->mount.src_mnt),
         .new_group_id = get_mount_peer_group_id(syscall->mount.src_mnt),
         .new_device = get_mount_dev(syscall->mount.src_mnt),

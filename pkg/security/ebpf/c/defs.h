@@ -48,6 +48,7 @@ enum event_type
 
 struct kevent_t {
     u64 type;
+    u64 timestamp;
 };
 
 struct file_t {
@@ -57,7 +58,6 @@ struct file_t {
 };
 
 struct syscall_t {
-    u64 timestamp;
     s64 retval;
 };
 
@@ -79,6 +79,7 @@ struct container_context_t {
 struct proc_cache_t {
     struct file_t executable;
     struct container_context_t container;
+    u64 timestamp;
 };
 
 struct bpf_map_def SEC("maps/events") events = {

@@ -92,10 +92,8 @@ int __attribute__((always_inline)) trace__sys_unlink_ret(struct pt_regs *ctx) {
 
     struct unlink_event_t event = {
         .event.type = EVENT_UNLINK,
-        .syscall = {
-            .retval = retval,
-            .timestamp = bpf_ktime_get_ns(),
-        },
+        .event.timestamp = bpf_ktime_get_ns(),
+        .syscall.retval = retval,
         .file = {
             .mount_id = syscall->unlink.path_key.mount_id,
             .inode = syscall->unlink.path_key.ino,
