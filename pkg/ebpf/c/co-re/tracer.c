@@ -162,6 +162,38 @@ static __always_inline bool is_ipv4_mapped_ipv6(u64 saddr_h, u64 saddr_l, u64 da
 #endif
 }
 
+struct sock_common___old {
+    struct net *skc_net;
+};
+
+struct net___old {
+    unsigned int proc_inum;
+};
+
+static __always_inline int read_net_ns(__u32 *inum, struct sock* skp) {
+    // Retrieve network namespace id
+    //
+    // skc_net became possible_net_t rather than struct net*
+    // https://github.com/torvalds/linux/commit/0c5c9fb55106333e773de8c9dd321fa8240caeb3
+    if (bpf_core_field_exists(skp->__sk_common.skc_net.net)) {
+        BPF_CORE_READ_INTO(inum, skp, __sk_common.skc_net.net, ns.inum);
+    } else {
+        struct sock_common___old *oldsk = 0;
+        BPF_CORE_READ_INTO(&oldsk, skp, __sk_common);
+
+        // inum wrapped in ns_common
+        // https://github.com/torvalds/linux/commit/435d5f4bb2ccba3b791d9ef61d2590e30b8e806e
+        if (bpf_core_field_exists(oldsk->skc_net->ns)) {
+            BPF_CORE_READ_INTO(inum, oldsk, skc_net, ns.inum);
+        } else {
+            struct net___old *oldnet = 0;
+            BPF_CORE_READ_INTO(&oldnet, oldsk, skc_net);
+            BPF_CORE_READ_INTO(inum, oldnet, proc_inum);
+        }
+    }
+    return 0;
+}
+
 static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u64 pid_tgid, metadata_mask_t type) {
     t->saddr_h = 0;
     t->saddr_l = 0;
@@ -237,9 +269,7 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     // Making ports human-readable
     t->dport = bpf_ntohs(t->dport);
 
-    // Retrieve network namespace id
-    BPF_CORE_READ_INTO(&t->netns, skp, __sk_common.skc_net.net, ns.inum);
-
+    read_net_ns(&t->netns, skp);
     return 1;
 }
 
@@ -481,8 +511,8 @@ int BPF_KPROBE(kprobe__tcp_close, struct sock *sk, long timeout) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
 #if defined(DEBUG)
     // Get network namespace id
-    u32 net_ns_inum = 0;
-    BPF_CORE_READ_INTO(&net_ns_inum, sk, __sk_common.skc_net.net, ns.inum);
+    __u32 net_ns_inum = 0;
+    read_net_ns(&net_ns_inum, sk);
     log_debug("kprobe/tcp_close: pid_tgid: %llu, ns: %u\n", pid_tgid, net_ns_inum);
 #endif
 
