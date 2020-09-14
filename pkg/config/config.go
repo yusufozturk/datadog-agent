@@ -696,6 +696,7 @@ func InitConfig(config Config) {
 	config.SetKnown("system_probe_config.enable_oom_kill")
 	config.SetKnown("system_probe_config.enable_tracepoints")
 	config.SetKnown("system_probe_config.windows.enable_monotonic_count")
+	config.SetKnown("system_probe_config.use_core")
 
 	// Network
 	config.BindEnv("network.id") //nolint:errcheck

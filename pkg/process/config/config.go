@@ -99,6 +99,7 @@ type AgentConfig struct {
 	MaxConnectionsStateBuffered    int
 	OffsetGuessThreshold           uint64
 	EnableTracepoints              bool
+	UseCORE                        bool
 
 	// DNS stats configuration
 	CollectDNSStats bool
@@ -484,10 +485,10 @@ func loadSysProbeEnvVariables() {
 		{"DD_DISABLE_DNS_INSPECTION", "system_probe_config.disable_dns_inspection"},
 		{"DD_COLLECT_LOCAL_DNS", "system_probe_config.collect_local_dns"},
 		{"DD_COLLECT_DNS_STATS", "system_probe_config.collect_dns_stats"},
+		{"DD_USE_CORE", "system_probe_config.use_core"},
 	} {
 		if v, ok := os.LookupEnv(variable.env); ok {
 			config.Datadog.Set(variable.cfg, v)
-
 		}
 	}
 }

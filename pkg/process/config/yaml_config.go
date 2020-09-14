@@ -163,6 +163,8 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 
 	a.Windows.EnableMonotonicCount = config.Datadog.GetBool(key(spNS, "windows", "enable_monotonic_count"))
 
+	a.UseCORE = config.Datadog.GetBool(key(spNS, "use_core"))
+
 	return nil
 }
 
