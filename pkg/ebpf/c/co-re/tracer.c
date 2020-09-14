@@ -227,7 +227,7 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     }
 
     // Retrieve ports
-    BPF_CORE_READ_INTO(&t->sport, (struct inet_sock *)skp, inet_sport);
+    BPF_CORE_READ_INTO(&t->sport, skp, __sk_common.skc_num);
     BPF_CORE_READ_INTO(&t->dport, skp, __sk_common.skc_dport);
     if (t->sport == 0 || t->dport == 0) {
         log_debug("ERR(read_conn_tuple): src/dst port not set: src:%u, dst:%u\n", bpf_ntohs(t->sport), bpf_ntohs(t->dport));
@@ -235,7 +235,6 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     }
 
     // Making ports human-readable
-    t->sport = bpf_ntohs(t->sport);
     t->dport = bpf_ntohs(t->dport);
 
     // Retrieve network namespace id
@@ -691,9 +690,7 @@ int BPF_KPROBE(kprobe__udp_destroy_sock, struct sock* sk) {
 
     // get the port for the current sock
     __u16 lport = 0;
-    BPF_CORE_READ_INTO(&lport, (struct inet_sock *)sk, inet_sport);
-    lport = bpf_ntohs(lport);
-
+    BPF_CORE_READ_INTO(&lport, sk, __sk_common.skc_num);
     if (lport == 0) {
         log_debug("ERR(udp_destroy_sock): lport is 0 \n");
         return 0;
