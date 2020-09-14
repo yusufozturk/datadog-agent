@@ -360,7 +360,7 @@ def omnibus_build(
     ctx,
     iot=False,
     agent_binaries=False,
-    log_level="info",
+    log_level="debug",
     base_dir=None,
     gem_path=None,
     skip_deps=False,
