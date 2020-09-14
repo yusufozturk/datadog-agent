@@ -282,14 +282,14 @@ def build_object_files(ctx, bundle_ebpf=False):
     ctx.run("which clang")
     print("found clang")
 
-    # centos_headers_dir = "/usr/src/kernels"
-    # debian_headers_dir = "/usr/src"
-    # if os.path.isdir(centos_headers_dir):
-    #     linux_headers = [os.path.join(centos_headers_dir, d) for d in os.listdir(centos_headers_dir)]
-    # else:
-    #     linux_headers = [
-    #         os.path.join(debian_headers_dir, d) for d in os.listdir(debian_headers_dir) if d.startswith("linux-")
-    #     ]
+    centos_headers_dir = "/usr/src/kernels"
+    debian_headers_dir = "/usr/src"
+    if os.path.isdir(centos_headers_dir):
+        linux_headers = [os.path.join(centos_headers_dir, d) for d in os.listdir(centos_headers_dir)]
+    else:
+        linux_headers = [
+            os.path.join(debian_headers_dir, d) for d in os.listdir(debian_headers_dir) if d.startswith("linux-")
+        ]
 
     bpf_dir = os.path.join(".", "pkg", "ebpf")
     c_dir = os.path.join(bpf_dir, "c")
@@ -311,68 +311,97 @@ def build_object_files(ctx, bundle_ebpf=False):
         .strip()
     )
 
-    flags = [
+    co_re_flags = [
         '-D__KERNEL__',
         "-D__TARGET_ARCH_{}".format(arch),
         '-target bpf',
-        # '-DCONFIG_64BIT',
-        # '-D__BPF_TRACING__',
         '-Wno-unused-value',
         '-Wno-pointer-sign',
         '-Wno-compare-distinct-pointer-types',
         '-Wunused',
         '-Wall',
         '-Werror',
-        # "-include {}".format(os.path.join(c_dir, "asm_goto_workaround.h")),
         '-O2',
         '-emit-llvm',
         '-g',  # wanted for CO-RE
     ]
 
-    # subdirs = [
-    #     "include",
-    #     "include/uapi",
-    #     "include/generated/uapi",
-    #     "arch/{}/include".format(arch),
-    #     "arch/{}/include/uapi".format(arch),
-    #     "arch/{}/include/generated".format(arch),
-    # ]
+    flags = [
+        '-D__KERNEL__',
+        "-D__TARGET_ARCH_{}".format(arch),
+        '-DCONFIG_64BIT',
+        '-D__BPF_TRACING__',
+        '-Wno-unused-value',
+        '-Wno-pointer-sign',
+        '-Wno-compare-distinct-pointer-types',
+        '-Wunused',
+        '-Wall',
+        '-Werror',
+        "-include {}".format(os.path.join(c_dir, "asm_goto_workaround.h")),
+        '-O2',
+        '-emit-llvm',
+    ]
 
-    # for d in linux_headers:
-    #     for s in subdirs:
-    #         flags.extend(["-isystem", os.path.join(d, s)])
+    subdirs = [
+        "include",
+        "include/uapi",
+        "include/generated/uapi",
+        "arch/{}/include".format(arch),
+        "arch/{}/include/uapi".format(arch),
+        "arch/{}/include/generated".format(arch),
+    ]
+
+    for d in linux_headers:
+        for s in subdirs:
+            flags.extend(["-isystem", os.path.join(d, s)])
 
     cmd = "clang {flags} -c '{c_file}' -o '{bc_file}'"
     llc_cmd = "llc -march=bpf -filetype=obj -o '{obj_file}' '{bc_file}'"
 
     commands = []
 
-    compiled_programs = [
-        "tracer",
-        # "tracer-ebpf",
-        # "offset-guess",
+    co_re_programs = [
+        "tracer"
     ]
-    # bindata_files = [
-    #     os.path.join(c_dir, "tcp-queue-length-kern.c"),
-    #     os.path.join(bpf_dir, "tcp-queue-length-kern-user.h"),
-    #     os.path.join(c_dir, "oom-kill-kern.c"),
-    #     os.path.join(bpf_dir, "oom-kill-kern-user.h"),
-    #     os.path.join(c_dir, "bpf-common.h"),
-    # ]
+    compiled_programs = [
+        "tracer-ebpf",
+        "offset-guess",
+    ]
+    bindata_files = [
+        os.path.join(c_dir, "tcp-queue-length-kern.c"),
+        os.path.join(bpf_dir, "tcp-queue-length-kern-user.h"),
+        os.path.join(c_dir, "oom-kill-kern.c"),
+        os.path.join(bpf_dir, "oom-kill-kern-user.h"),
+        os.path.join(c_dir, "bpf-common.h"),
+    ]
     for p in compiled_programs:
         # Build both the standard and debug version
+        src_file = os.path.join(c_dir, "{}.c".format(p))
+        bc_file = os.path.join(c_dir, "{}.bc".format(p))
+        obj_file = os.path.join(c_dir, "{}.o".format(p))
+        commands.append(cmd.format(flags=" ".join(flags), bc_file=bc_file, c_file=src_file))
+        commands.append(llc_cmd.format(bc_file=bc_file, obj_file=obj_file))
+
+        debug_bc_file = os.path.join(c_dir, "{}-debug.bc".format(p))
+        debug_obj_file = os.path.join(c_dir, "{}-debug.o".format(p))
+        commands.append(cmd.format(flags=" ".join(flags + ["-DDEBUG=1"]), bc_file=debug_bc_file, c_file=src_file))
+        commands.append(llc_cmd.format(bc_file=debug_bc_file, obj_file=debug_obj_file))
+
+        bindata_files.extend([obj_file, debug_obj_file])
+
+    for p in co_re_programs:
         src_file = os.path.join(co_re_dir, "{}.c".format(p))
         bc_file = os.path.join(co_re_dir, "{}.bc".format(p))
         obj_file = os.path.join(co_re_dir, "{}.o".format(p))
-        commands.append(cmd.format(flags=" ".join(flags), bc_file=bc_file, c_file=src_file))
-        commands.append(llc_cmd.format(flags=" ".join(flags), bc_file=bc_file, obj_file=obj_file))
+        commands.append(cmd.format(flags=" ".join(co_re_flags), bc_file=bc_file, c_file=src_file))
+        commands.append(llc_cmd.format(bc_file=bc_file, obj_file=obj_file))
 
         debug_bc_file = os.path.join(co_re_dir, "{}-debug.bc".format(p))
         debug_obj_file = os.path.join(co_re_dir, "{}-debug.o".format(p))
-        commands.append(cmd.format(flags=" ".join(flags + ["-DDEBUG=1"]), bc_file=debug_bc_file, c_file=src_file))
-        commands.append(llc_cmd.format(flags=" ".join(flags), bc_file=debug_bc_file, obj_file=debug_obj_file))
+        commands.append(cmd.format(flags=" ".join(co_re_flags + ["-DDEBUG=1"]), bc_file=debug_bc_file, c_file=src_file))
+        commands.append(llc_cmd.format( bc_file=debug_bc_file, obj_file=debug_obj_file))
 
-        # bindata_files.extend([obj_file, debug_obj_file])
+        bindata_files.extend([obj_file, debug_obj_file])
 
     # Build security runtime programs
     # security_agent_c_dir = os.path.join(".", "pkg", "security", "ebpf", "c")
@@ -405,14 +434,14 @@ def build_object_files(ctx, bundle_ebpf=False):
     # )
     # bindata_files.extend([security_agent_obj_file, security_agent_syscall_wrapper_obj_file])
     #
-    # if bundle_ebpf:
-    #     assets_cmd = (
-    #         os.environ["GOPATH"]
-    #         + "/bin/go-bindata -pkg bytecode -tags ebpf_bindata -prefix '{c_dir}' -modtime 1 -o '{go_file}' '{bindata_files}'"
-    #     )
-    #     go_file = os.path.join(bpf_dir, "bytecode", "tracer-ebpf.go")
-    #     commands.append(assets_cmd.format(c_dir=c_dir, go_file=go_file, bindata_files="' '".join(bindata_files)))
-    #     commands.append("gofmt -w -s {go_file}".format(go_file=go_file))
+    if bundle_ebpf:
+        assets_cmd = (
+            os.environ["GOPATH"]
+            + "/bin/go-bindata -pkg bytecode -tags ebpf_bindata -prefix '{c_dir}' -modtime 1 -o '{go_file}' '{bindata_files}'"
+        )
+        go_file = os.path.join(bpf_dir, "bytecode", "tracer-ebpf.go")
+        commands.append(assets_cmd.format(c_dir=c_dir, go_file=go_file, bindata_files="' '".join(bindata_files)))
+        commands.append("gofmt -w -s {go_file}".format(go_file=go_file))
 
     for cmd in commands:
         ctx.run(cmd)
