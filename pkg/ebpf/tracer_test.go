@@ -1563,6 +1563,14 @@ const (
 )
 
 func testDNSStats(t *testing.T, domain string, success int, failure int, timeout int, serverIP string) {
+	currKernelVersion, err := ebpf.CurrentKernelVersion()
+	require.NoError(t, err)
+	pre410Kernel := isPre410Kernel(currKernelVersion)
+	if pre410Kernel {
+		t.Skip("DNS feature not available on pre 4.1.0 kernels")
+		return
+	}
+
 	config := NewDefaultConfig()
 	config.CollectDNSStats = true
 	config.CollectLocalDNS = true
