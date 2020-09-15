@@ -103,8 +103,9 @@ type testModule struct {
 }
 
 type testDiscarder struct {
-	event eval.Event
-	field string
+	event     eval.Event
+	field     string
+	eventType eval.EventType
 }
 
 type testProbe struct {
@@ -128,8 +129,8 @@ func (h *testEventHandler) HandleEvent(event *sprobe.Event) {
 
 func (h *testEventHandler) RuleMatch(rule *eval.Rule, event eval.Event) {}
 
-func (h *testEventHandler) EventDiscarderFound(rs *rules.RuleSet, event eval.Event, field string) {
-	h.discarders <- &testDiscarder{event: event, field: field}
+func (h *testEventHandler) EventDiscarderFound(rs *rules.RuleSet, event eval.Event, field eval.Field, eventType eval.EventType) {
+	h.discarders <- &testDiscarder{event: event, field: field, eventType: eventType}
 }
 
 func setTestConfig(dir string, macros []*rules.MacroDefinition, rules []*rules.RuleDefinition, opts testOpts) (string, error) {
@@ -229,7 +230,7 @@ func (tm *testModule) RuleMatch(rule *eval.Rule, event eval.Event) {
 	tm.events <- testEvent{event: event, rule: rule}
 }
 
-func (tm *testModule) EventDiscarderFound(rs *rules.RuleSet, event eval.Event, field string) {
+func (tm *testModule) EventDiscarderFound(rs *rules.RuleSet, event eval.Event, field eval.Field, eventType eval.EventType) {
 }
 
 func (tm *testModule) GetEvent() (*sprobe.Event, *eval.Rule, error) {
@@ -296,7 +297,7 @@ func newTestProbe(macrosDef []*rules.MacroDefinition, rulesDef []*rules.RuleDefi
 		return nil, err
 	}
 
-	ruleSet := probe.NewRuleSet(rules.NewOptsWithParams(false, sprobe.SECLConstants, sprobe.InvalidDiscarders))
+	ruleSet := probe.NewRuleSet(rules.NewOptsWithParams(sprobe.SECLConstants))
 
 	if err := policy.LoadPolicies(config, ruleSet); err != nil {
 		return nil, err
