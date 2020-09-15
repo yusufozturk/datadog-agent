@@ -89,6 +89,7 @@ func StartServer() error {
 
 	s := grpc.NewServer(opts...)
 	pb.RegisterAgentServer(s, &server{})
+	pb.RegisterTaggerServer(s, &taggerServer{})
 
 	dcreds := credentials.NewTLS(&tls.Config{
 		ServerName: tlsAddr,
