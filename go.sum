@@ -106,6 +106,8 @@ github.com/DataDog/ebpf v0.0.0-20200914110521-2f2e7196d642 h1:2+JAS39JDdES+NQp8L
 github.com/DataDog/ebpf v0.0.0-20200914110521-2f2e7196d642/go.mod h1:KNnyHMGc9auLVSPvYY8ws1BRvZP5THoxJuhfEOsuW7U=
 github.com/DataDog/ebpf v0.0.0-20200914122217-4ae764452e0c h1:yuhgwYipZGft4iiZjp0fRt8joaloFMiMw7OxZ+o3UKk=
 github.com/DataDog/ebpf v0.0.0-20200914122217-4ae764452e0c/go.mod h1:G6NxI0QPFzGNL00kbkDgHcduq6kUkZZI22gAQieM3Dc=
+github.com/DataDog/ebpf v0.0.0-20200915074912-2edb2efe69b7 h1:BuWUbXf6BbBWXfyDG4lQftwOijco3IuOi6Mial0CItE=
+github.com/DataDog/ebpf v0.0.0-20200915074912-2edb2efe69b7/go.mod h1:G6NxI0QPFzGNL00kbkDgHcduq6kUkZZI22gAQieM3Dc=
 github.com/DataDog/gobpf v0.0.0-20200728095841-88e65b29b186 h1:M/TmXm0VnfBmg9zkqdz+JQpaPgdgohQ81UE+tClyGiQ=
 github.com/DataDog/gobpf v0.0.0-20200728095841-88e65b29b186/go.mod h1:rNvi5cSHdpxN6495MOYAWN3yukac8lORoluL+9Osrsw=
 github.com/DataDog/gohai v0.0.0-20200605003749-e17d616e422a h1:BkU6uq4Ib7Kp1zP7MT33IdHZQazC+kxbuTyEmgePyyA=
@@ -431,6 +433,7 @@ github.com/florianl/go-conntrack v0.1.1-0.20191002182014-06743d3a59db h1:JDPZPln
 github.com/florianl/go-conntrack v0.1.1-0.20191002182014-06743d3a59db/go.mod h1:BbkPu5Wcfr8K3OVVnb/ghX2XAu7vK+RLtvMhCm5ORBE=
 github.com/florianl/go-tc v0.1.0 h1:oOChnhxvsYaZLvxrILdKe1uf4lq1zDGrnG52iP5FEMk=
 github.com/florianl/go-tc v0.1.0/go.mod h1:n77vbeG0iBmb6p3oGSfS+tKZ27vV4tF+kQLevzOTzQU=
+github.com/florianl/go-tc v0.2.0 h1:k3Dr3rtmMP2KCRlWgRUC6XKBZA5lL9rNBAr80H50/6k=
 github.com/florianl/go-tc v0.2.0/go.mod h1:aWdDOHrIpaff8cZp6z7dgJZ1bRsgTS6pXIW0xRdFTK8=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
