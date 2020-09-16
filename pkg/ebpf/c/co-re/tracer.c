@@ -272,13 +272,12 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
     }
 
     BPF_CORE_READ_INTO(&t->dport, skp, __sk_common.skc_dport);
+    t->dport = bpf_ntohs(t->dport);
     if (t->sport == 0 || t->dport == 0) {
-        log_debug("ERR(read_conn_tuple): src/dst port not set: src:%u, dst:%u\n", bpf_ntohs(t->sport), bpf_ntohs(t->dport));
+        log_debug("ERR(read_conn_tuple): src/dst port not set: src:%u, dst:%u\n", t->sport, t->dport);
         return 0;
     }
 
-    // Making ports human-readable
-    t->dport = bpf_ntohs(t->dport);
     t->netns = read_net_ns(skp);
 
     return 1;
