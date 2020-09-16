@@ -186,7 +186,8 @@ func TestTCPSendAndReceive(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 
 	c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
 	if err != nil {
@@ -240,7 +241,8 @@ func TestPreexistingConnectionDirection(t *testing.T) {
 		_, _ = c.Write(genPayload(serverMessageSize))
 		_ = c.Close()
 	})
-	server.Run(doneChan)
+	err := server.Run(doneChan)
+	require.NoError(t, err)
 
 	c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
 	require.NoError(t, err)
@@ -304,7 +306,8 @@ func TestDNATIntraHostIntegration(t *testing.T) {
 		},
 	}
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	conn, err := net.Dial("tcp", "2.2.2.2:5432")
@@ -354,7 +357,8 @@ func TestTCPRemoveEntries(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// Connect to server
@@ -438,7 +442,8 @@ func TestTCPRetransmit(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// Connect to server
@@ -486,7 +491,8 @@ func TestTCPRetransmitSharedSocket(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// Connect to server
@@ -548,7 +554,8 @@ func TestTCPRTT(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	c, err := net.DialTimeout("tcp", server.address, time.Second)
@@ -601,7 +608,8 @@ func TestTCPShortlived(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// determine the total number of messages that will guarantee a perf batch flush
@@ -759,7 +767,8 @@ func TestTCPCollectionDisabled(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// Connect to server
@@ -838,7 +847,8 @@ func TestUDPDisabled(t *testing.T) {
 	})
 
 	doneChan := make(chan struct{})
-	server.Run(doneChan, clientMessageSize)
+	err = server.Run(doneChan, clientMessageSize)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// Connect to server
@@ -978,7 +988,8 @@ func TestTooSmallBPFMap(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	// Connect to server two times
@@ -1046,7 +1057,8 @@ func TestTCPMiscount(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
@@ -1160,7 +1172,8 @@ func TestConnectionExpirationRegression(t *testing.T) {
 		connClosed <- struct{}{}
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	c, err := net.DialTimeout("tcp", server.address, time.Second)
@@ -1283,7 +1296,8 @@ func benchEchoUDP(size int) func(b *testing.B) {
 	return func(b *testing.B) {
 		end := make(chan struct{})
 		server := NewUDPServer(echoOnMessage)
-		server.Run(end, size)
+		err := server.Run(end, size)
+		require.NoError(b, err)
 		defer close(end)
 
 		c, err := net.DialTimeout("udp", server.address, 50*time.Millisecond)
@@ -1350,7 +1364,8 @@ func benchEchoTCP(size int) func(b *testing.B) {
 	return func(b *testing.B) {
 		end := make(chan struct{})
 		server := NewTCPServer(echoOnMessage)
-		server.Run(end)
+		err := server.Run(end)
+		require.NoError(b, err)
 		defer close(end)
 
 		c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
@@ -1389,7 +1404,8 @@ func benchSendTCP(size int) func(b *testing.B) {
 	return func(b *testing.B) {
 		end := make(chan struct{})
 		server := NewTCPServer(dropOnMessage)
-		server.Run(end)
+		err := server.Run(end)
+		require.NoError(b, err)
 		defer close(end)
 
 		c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
@@ -1421,11 +1437,10 @@ func NewTCPServer(onMessage func(c net.Conn)) *TCPServer {
 	}
 }
 
-func (s *TCPServer) Run(done chan struct{}) {
+func (s *TCPServer) Run(done chan struct{}) error {
 	ln, err := net.Listen("tcp", s.address)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	s.address = ln.Addr().String()
 
@@ -1443,6 +1458,8 @@ func (s *TCPServer) Run(done chan struct{}) {
 			s.onMessage(conn)
 		}
 	}()
+
+	return nil
 }
 
 type UDPServer struct {
@@ -1461,11 +1478,10 @@ func NewUDPServerOnAddress(addr string, onMessage func(b []byte, n int) []byte) 
 	}
 }
 
-func (s *UDPServer) Run(done chan struct{}, payloadSize int) {
+func (s *UDPServer) Run(done chan struct{}, payloadSize int) error {
 	ln, err := net.ListenPacket("udp", s.address)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
 
 	s.address = ln.LocalAddr().String()
@@ -1493,6 +1509,8 @@ func (s *UDPServer) Run(done chan struct{}, payloadSize int) {
 
 		ln.Close()
 	}()
+
+	return nil
 }
 
 var letterBytes = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -1656,7 +1674,8 @@ func TestConntrackExpiration(t *testing.T) {
 		return nil
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan, clientMessageSize)
+	err = server.Run(doneChan, clientMessageSize)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	c, err := net.Dial("udp", fmt.Sprintf("2.2.2.2:%d", port))
@@ -1697,7 +1716,8 @@ func TestTCPEstablished(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err = server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
@@ -1730,7 +1750,8 @@ func TestTCPEstablishedPreExistingConn(t *testing.T) {
 		c.Close()
 	})
 	doneChan := make(chan struct{})
-	server.Run(doneChan)
+	err := server.Run(doneChan)
+	require.NoError(t, err)
 	defer close(doneChan)
 
 	c, err := net.DialTimeout("tcp", server.address, 50*time.Millisecond)
