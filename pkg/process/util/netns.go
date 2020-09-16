@@ -66,9 +66,10 @@ func GetNetNamespaces(procRoot string) ([]netns.NsHandle, error) {
 			continue
 		}
 
-		ns, err := netns.GetFromPath(fmt.Sprintf("%s/%s/ns/net", procRoot, f.Name()))
+		path := fmt.Sprintf("%s/%s/ns/net", procRoot, f.Name())
+		ns, err := netns.GetFromPath(path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 
 		uid := ns.UniqueId()

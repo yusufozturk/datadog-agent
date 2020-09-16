@@ -236,6 +236,10 @@ func TestTCPSendAndReceive(t *testing.T) {
 	assert.Equal(t, network.OUTGOING, conn.Direction)
 	assert.True(t, conn.IntraHost)
 
+	ownns, err := ownNetNS()
+	require.NoError(t, err)
+	assert.Equal(t, ownns, conn.NetNS)
+
 	doneChan <- struct{}{}
 }
 

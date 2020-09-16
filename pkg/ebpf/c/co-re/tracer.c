@@ -170,28 +170,34 @@ struct net___old {
     unsigned int proc_inum;
 };
 
-static __always_inline int read_net_ns(__u32 *inum, struct sock* skp) {
+struct sock___old {
+    struct sock_common___old __sk_common;
+};
+
+static __always_inline __u32 read_net_ns(struct sock* skp) {
+    __u32 net_ns_inum = 0;
     // Retrieve network namespace id
     //
-    // skc_net became possible_net_t rather than struct net*
+    // `possible_net_t skc_net`
+    // replaced
+    // `struct net *skc_net`
     // https://github.com/torvalds/linux/commit/0c5c9fb55106333e773de8c9dd321fa8240caeb3
     if (bpf_core_field_exists(skp->__sk_common.skc_net.net)) {
-        BPF_CORE_READ_INTO(inum, skp, __sk_common.skc_net.net, ns.inum);
+        BPF_CORE_READ_INTO(&net_ns_inum, skp, __sk_common.skc_net.net, ns.inum);
     } else {
-        struct sock_common___old *oldsk = 0;
-        BPF_CORE_READ_INTO(&oldsk, skp, __sk_common);
+        struct sock___old *oldsk = (struct sock___old *)skp;
 
         // inum wrapped in ns_common
         // https://github.com/torvalds/linux/commit/435d5f4bb2ccba3b791d9ef61d2590e30b8e806e
-        if (bpf_core_field_exists(oldsk->skc_net->ns)) {
-            BPF_CORE_READ_INTO(inum, oldsk, skc_net, ns.inum);
+        if (bpf_core_field_exists(oldsk->__sk_common.skc_net->ns)) {
+            BPF_CORE_READ_INTO(&net_ns_inum, oldsk, __sk_common.skc_net, ns.inum);
         } else {
             struct net___old *oldnet = 0;
-            BPF_CORE_READ_INTO(&oldnet, oldsk, skc_net);
-            BPF_CORE_READ_INTO(inum, oldnet, proc_inum);
+            BPF_CORE_READ_INTO(&oldnet, oldsk, __sk_common.skc_net);
+            BPF_CORE_READ_INTO(&net_ns_inum, oldnet, proc_inum);
         }
     }
-    return 0;
+    return net_ns_inum;
 }
 
 static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u64 pid_tgid, metadata_mask_t type) {
@@ -273,8 +279,8 @@ static __always_inline int read_conn_tuple(conn_tuple_t* t, struct sock* skp, u6
 
     // Making ports human-readable
     t->dport = bpf_ntohs(t->dport);
+    t->netns = read_net_ns(skp);
 
-    read_net_ns(&t->netns, skp);
     return 1;
 }
 
@@ -514,16 +520,11 @@ SEC("kprobe/tcp_close")
 int BPF_KPROBE(kprobe__tcp_close, struct sock *sk, long timeout) {
     conn_tuple_t t = {};
     u64 pid_tgid = bpf_get_current_pid_tgid();
-#if defined(DEBUG)
-    // Get network namespace id
-    __u32 net_ns_inum = 0;
-    read_net_ns(&net_ns_inum, sk);
-    log_debug("kprobe/tcp_close: pid_tgid: %llu, ns: %u\n", pid_tgid, net_ns_inum);
-#endif
-
     if (!read_conn_tuple(&t, sk, pid_tgid, CONN_TYPE_TCP)) {
         return 0;
     }
+
+    log_debug("kprobe/tcp_close: %llu ns: %u\n", pid_tgid, t.netns);
 
     cleanup_tcp_conn(&t);
     return 0;
