@@ -38,4 +38,22 @@ build do
 
   end
 
+  if linux?
+    runtime_dir = "#{install_dir}/etc/datadog-agent/runtime-security.d"
+    mkdir runtime_dir
+
+    # Copy config files for runtime
+    block do
+
+      Dir.glob("#{project_dir}/runtime/*").each do |file|
+
+        next if !File.file?(file)
+
+        copy file, "#{runtime_dir}/"
+
+      end
+
+    end
+  end
+
 end
