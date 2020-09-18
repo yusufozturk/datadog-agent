@@ -214,3 +214,6 @@ replace (
 
 // Pinned so it includes fix for Windows Nano
 replace k8s.io/klog => k8s.io/klog v1.0.1-0.20200310124935-4ad0115ba9e4
+
+// bitbucket.org/ww/goautoneg has disappeard
+replace bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30
